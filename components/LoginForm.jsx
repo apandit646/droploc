@@ -67,22 +67,20 @@ export default function SignupForm() {
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        "http://192.168.5.24:8080/auth/login",
-        {
-          email,
-          password,
-          role, // Include role in the request
-          latitude: location.latitude, // Send latitude
-          longitude: location.longitude, // Send longitude
-        }
-      );
+      const response = await axios.post("http://192.168.5.24:8080/auth/login", {
+        email,
+        password,
+        role, // Include role in the request
+        latitude: location.latitude, // Send latitude
+        longitude: location.longitude, // Send longitude
+      });
       const user_data = await response.data;
 
       if (response.status === 200) {
         // Handle successful signup (you can navigate or show a success message here)
         saveData("token", user_data.response.token);
         getData("token").then((data) => console.log(data));
+        saveData("email", email);
         // await SecureStore.setItemAsync("latitude", location.latitude);
         // await SecureStore.setItemAsync("longitude", location.longitude);
         router.push("/map");

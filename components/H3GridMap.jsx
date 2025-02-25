@@ -12,7 +12,7 @@ export default function LeafletMap() {
     latitude: 37.78825,
     longitude: -122.4324,
   });
-  const [providerLoc, setPricidedLoc] = useState([null]);
+  const [providerLoc, setPricidedLoc] = useState([]);
   const [serviceProviders, setServiceProviders] = useState([]);
   const [token, setToken] = useState(null);
   const [email, setEmail] = useState(null);
@@ -23,7 +23,7 @@ export default function LeafletMap() {
       try {
         const storedToken = await SecureStore.getItemAsync("token");
         const storedEmail = await SecureStore.getItemAsync("email");
-
+        console.log(storedEmail, "<<<<<<", storedToken);
         if (!storedToken || !storedEmail) {
           console.error("❌ No token or email found");
           return;
@@ -70,14 +70,15 @@ export default function LeafletMap() {
 
         // Subscribe to user-specific updates
         const userTopic = `/user/${email}/location-sub`;
-        console.log("📡 Subscribing to user topic:", userTopic);
-        userSubscription = stomp.subscribe(userTopic, (message) => {
+
+        userSubscription = stomp.subscribe(userTopic, async (message) => {
           console.log("📨 Received user message:", {
             headers: message.headers,
             body: message.body,
           });
           try {
             const data = JSON.parse(message.body);
+
             console.log("📦 Parsed user message data:", data);
             if (data.response) {
               const newCellAddress = data.response;
@@ -118,8 +119,13 @@ export default function LeafletMap() {
         });
 
         // Subscribe to all location updates
-        stomp.subscribe("/location/*", (message) => {
+        stomp.subscribe("/location/*", async (message) => {
           console.log("🌍 General location update:", message.body);
+          const bodyRes = await JSON.parse(message.body);
+          const loc_data = await bodyRes.response;
+          console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", bodyRes.response);
+          await setPricidedLoc([...loc_data]);
+          cosnole.log(providerLoc, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         });
       };
 
