@@ -6,6 +6,7 @@ import {
   FlatList,
   Text,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -28,6 +29,7 @@ export default function LeafletMap() {
   const [loading, setLoading] = useState(true);
   const carIcon = require("../assets/images/car_texi.png");
   const humanIcon = require("../assets/images/human.png");
+
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
@@ -185,6 +187,9 @@ export default function LeafletMap() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>DropDown</Text>
+      </View>
       <MapView
         style={styles.map}
         region={{
@@ -231,6 +236,10 @@ export default function LeafletMap() {
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
             <View style={styles.item}>
+              <Image
+                source={require("../assets/images/logo.png")}
+                style={styles.logo}
+              />
               <Text style={styles.text}>{item.name}</Text>
               <TouchableOpacity
                 style={styles.callButton}
@@ -249,6 +258,26 @@ export default function LeafletMap() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#1c1c1e",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#2c2c2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#444",
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 10,
+  },
+  headerText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
   },
   map: {
     width: "100%",
@@ -260,7 +289,7 @@ const styles = StyleSheet.create({
   item: {
     flex: 1,
     margin: 5,
-    backgroundColor: "#3498db",
+    backgroundColor: "#2c2c2e",
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
@@ -272,7 +301,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   callButton: {
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#4a90e2",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
@@ -286,5 +315,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#1c1c1e",
   },
 });
