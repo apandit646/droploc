@@ -20,9 +20,9 @@ import { Picker } from "@react-native-picker/picker";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
-import { Lock, Mail, User, MapPin } from "lucide-react-native";
+import { Lock, Mail, User } from "lucide-react-native";
 
-export default function SignupForm() {
+export default function LoginForm() {
   const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
   const [password, setPassword] = useState("Anubhav123");
   const [role, setRole] = useState("User");
@@ -40,7 +40,7 @@ export default function SignupForm() {
     return (await Location.getCurrentPositionAsync({})).coords;
   };
 
-  const handleSignup = async () => {
+  const handleLogin = async () => {
     const { latitude, longitude } = (await getDeviceLocation()) || {};
     setLoading(true);
     try {
@@ -54,6 +54,7 @@ export default function SignupForm() {
         router.push("/map");
       } else throw new Error("Unexpected response");
     } catch (error) {
+      console.log(error);
       Alert.alert("Signup Failed 😔", "Please try again");
     } finally {
       setLoading(false);
@@ -62,103 +63,97 @@ export default function SignupForm() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#6A11CB", "#2575FC"]} style={styles.background}>
+      <LinearGradient
+        colors={["#0F2027", "#203A43", "#2C5364"]}
+        style={styles.background}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.flexContainer}
+          style={styles.keyboardAvoidContainer}
         >
           <ScrollView
-            contentContainerStyle={{ minHeight: height }}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContainer}
           >
-            <View style={[styles.formContainer, { width: width * 0.9 }]}>
+            <View style={styles.formContainer}>
+              {/* Logo */}
               <Image
                 source={require("../assets/images/logo.png")}
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={[styles.title, { fontSize: width * 0.07 }]}>
-                DropDown
-              </Text>
+
+              {/* Title */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>Welcome Back! 👋</Text>
+                <View style={styles.subtitleUnderline} />
+              </View>
 
               {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <View style={styles.iconInputContainer}>
-                  <Mail color="#6A11CB" size={24} style={styles.icon} />
-                  <TextInput
-                    placeholder="Enter your email"
-                    value={email}
-                    onChangeText={setEmail}
-                    style={[styles.input, { fontSize: width * 0.04 }]}
-                    autoCapitalize="none"
-                    placeholderTextColor="#999"
-                  />
-                </View>
+              <View style={styles.iconInputContainer}>
+                <Mail color="#4ecdc4" size={24} style={styles.icon} />
+                <TextInput
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  placeholderTextColor="#6ecff2"
+                />
               </View>
 
               {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <View style={styles.iconInputContainer}>
-                  <Lock color="#6A11CB" size={24} style={styles.icon} />
-                  <TextInput
-                    placeholder="Enter your password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    style={[styles.input, { fontSize: width * 0.04 }]}
-                    placeholderTextColor="#999"
-                  />
-                </View>
+              <View style={styles.iconInputContainer}>
+                <Lock color="#4ecdc4" size={24} style={styles.icon} />
+                <TextInput
+                  placeholder="Enter your password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  style={styles.input}
+                  placeholderTextColor="#6ecff2"
+                />
               </View>
 
               {/* Role Picker */}
-              <View style={styles.inputContainer}>
-                <Text style={[styles.label, { fontSize: width * 0.04 }]}>
-                  Select Your Role 👤
-                </Text>
-                <View style={styles.pickerContainer}>
-                  <User color="#6A11CB" size={24} style={styles.icon} />
-                  <Picker
-                    selectedValue={role}
-                    onValueChange={setRole}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="User 🏠" value="User" />
-                    <Picker.Item label="Service Provider 💼" value="Admin" />
-                  </Picker>
-                </View>
+              <View style={styles.pickerContainer}>
+                <Text style={styles.pickerLabel}>Select Your Role 👤</Text>
+                <Picker
+                  selectedValue={role}
+                  onValueChange={setRole}
+                  style={styles.picker}
+                  dropdownIconColor="#4ecdc4"
+                >
+                  <Picker.Item label="Userj" value="User" color="#6ecff2" />
+                  <Picker.Item
+                    label="ServiceProvider"
+                    value="ServiceProvider"
+                    color="#6ecff2"
+                  />
+                </Picker>
               </View>
 
               {/* Login Button */}
               <TouchableOpacity
-                style={[styles.signupButton, { padding: height * 0.018 }]}
-                onPress={handleSignup}
+                style={styles.signupButton}
+                onPress={handleLogin}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color="#0F2027" size="large" />
                 ) : (
-                  <Text
-                    style={[
-                      styles.signupButtonText,
-                      { fontSize: width * 0.045 },
-                    ]}
-                  >
-                    Let's Go! 🚀
-                  </Text>
+                  <Text style={styles.signupButtonText}>Login 🚀</Text>
                 )}
               </TouchableOpacity>
 
-              {/* Login Link */}
+              {/* Signup Link */}
               <TouchableOpacity
                 style={styles.loginLink}
                 onPress={() => router.push("/")}
               >
-                <Text
-                  style={[styles.loginLinkText, { fontSize: width * 0.035 }]}
-                >
-                  Already have an account?{" "}
-                  <Text style={styles.loginTextBold}>Sign In 🔐</Text>
+                <Text style={styles.loginLinkText}>
+                  Don't have an account?{" "}
+                  <Text style={styles.loginTextBold}>Sign Up 🔐</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -176,8 +171,20 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
-  flexContainer: {
+  keyboardAvoidContainer: {
     flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  formContainer: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 20,
+    margin: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   logo: {
     width: "50%",
@@ -185,87 +192,75 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 20,
   },
-  formContainer: {
-    alignSelf: "center",
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: "5%",
-    marginTop: "10%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 10,
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 20,
   },
   title: {
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: "5%",
+    color: "#4ecdc4",
     textAlign: "center",
   },
-  inputContainer: {
-    marginBottom: "4%",
+  subtitleUnderline: {
+    height: 2,
+    width: 100,
+    backgroundColor: "#4ecdc4",
+    marginTop: 5,
   },
   iconInputContainer: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
+    borderColor: "rgba(78,205,196,0.3)",
   },
   icon: {
     marginLeft: 10,
     marginRight: 10,
   },
-  label: {
-    color: "#666",
-    marginBottom: "2%",
-    fontWeight: "500",
-  },
   input: {
     flex: 1,
-    padding: "4%",
-    borderRadius: 12,
+    color: "#6ecff2",
+    padding: 10,
   },
   pickerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
+    borderColor: "rgba(78,205,196,0.3)",
+    marginBottom: 10,
+  },
+  pickerLabel: {
+    color: "#4ecdc4",
+    textAlign: "center",
+    padding: 10,
   },
   picker: {
-    height: 50,
-    width: "90%",
+    color: "#6ecff2",
   },
   signupButton: {
-    backgroundColor: "#6A11CB",
-    borderRadius: 12,
-    marginTop: "4%",
+    backgroundColor: "#4ecdc4",
+    padding: 15,
+    borderRadius: 10,
     alignItems: "center",
-    shadowColor: "#6A11CB",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
+    marginBottom: 10,
   },
   signupButtonText: {
-    color: "white",
-    textAlign: "center",
-    fontWeight: "600",
+    color: "#0F2027",
+    fontSize: 18,
+    fontWeight: "bold",
   },
   loginLink: {
-    marginTop: "4%",
-    padding: "2%",
+    alignItems: "center",
   },
   loginLinkText: {
-    textAlign: "center",
-    color: "#666",
+    color: "#6ecff2",
   },
   loginTextBold: {
-    color: "#6A11CB",
-    fontWeight: "600",
+    fontWeight: "bold",
+    color: "#4ecdc4",
   },
 });
