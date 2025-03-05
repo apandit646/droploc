@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  StyleSheet,
+  View,
+  Linking,
+  FlatList,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { StyleSheet, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
+import { Block } from "galio-framework";
 
 export default function LeafletMap() {
   const [stompClient, setStompClient] = useState(null);
@@ -12,31 +20,29 @@ export default function LeafletMap() {
     latitude: 37.78825,
     longitude: -122.4324,
   });
-  const [providerLoc, setPricidedLoc] = useState([]);
+  const [providerLoc, setProviderLoc] = useState([]);
   const [serviceProviders, setServiceProviders] = useState([]);
   const [token, setToken] = useState(null);
   const [email, setEmail] = useState(null);
   const [cellAddress, setCellAddress] = useState("");
-
+  const [loading, setLoading] = useState(true);
+  const carIcon = require("../assets/images/car_texi.png");
+  const humanIcon = require("../assets/images/human.png");
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
         const storedToken = await SecureStore.getItemAsync("token");
         const storedEmail = await SecureStore.getItemAsync("email");
-        console.log(storedEmail, "<<<<<<", storedToken);
         if (!storedToken || !storedEmail) {
           console.error("❌ No token or email found");
           return;
         }
-
-        console.log("✅ Token & Email Retrieved:", {
-          token: storedToken,
-          email: storedEmail,
-        });
         setToken(storedToken);
         setEmail(storedEmail);
       } catch (error) {
         console.error("❌ Error fetching auth data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -48,15 +54,12 @@ export default function LeafletMap() {
 
     let socket, stomp;
     let interval;
-    let locationSubscription;
     let userSubscription;
+    let locationSubscription;
     let testSubscription;
 
     const connectWebSocket = () => {
-      console.log("🔗 Initializing WebSocket connection...");
-      console.log("🌐 Connecting to:", "http://172.20.10.2:8080/ws-location");
-
-      socket = new SockJS("http://172.20.10.2:8080/ws-location");
+      socket = new SockJS("http://192.168.5.216:8080/ws-location");
       stomp = new Client({
         webSocketFactory: () => socket,
         debug: (str) => console.log(`🐞 STOMP Debug: ${str}`),
@@ -65,40 +68,20 @@ export default function LeafletMap() {
       });
 
       stomp.onConnect = (frame) => {
-        console.log("✅ Successfully connected to WebSocket");
-        console.log("🔌 Connection frame:", frame);
-
-        // Subscribe to user-specific updates
         const userTopic = `/user/${email}/location-sub`;
-
-        userSubscription = stomp.subscribe(userTopic, async (message) => {
-          console.log("📨 Received user message:", {
-            headers: message.headers,
-            body: message.body,
-          });
+        userSubscription = stomp.subscribe(userTopic, (message) => {
           try {
             const data = JSON.parse(message.body);
-
-            console.log("📦 Parsed user message data:", data);
             if (data.response) {
               const newCellAddress = data.response;
-              console.log("📍 New cell address:", newCellAddress);
               setCellAddress(newCellAddress);
-
-              // Subscribe to service providers in new cell area
               const locationTopic = `/location/${newCellAddress}`;
-              console.log("🛰 Subscribing to location topic:", locationTopic);
               if (locationSubscription) locationSubscription.unsubscribe();
               locationSubscription = stomp.subscribe(
                 locationTopic,
                 (providerMessage) => {
-                  console.log("📨 Received location update:", {
-                    headers: providerMessage.headers,
-                    body: providerMessage.body,
-                  });
                   try {
                     const providerData = JSON.parse(providerMessage.body);
-                    console.log("👨‍⚕️ Service provider data:", providerData);
                     if (providerData.response) {
                       setServiceProviders(providerData.response);
                     }
@@ -113,28 +96,23 @@ export default function LeafletMap() {
           }
         });
 
-        // Subscribe to test endpoint
         testSubscription = stomp.subscribe("/test", (message) => {
           console.log("🧪 Test message received:", message.body);
         });
 
-        // Subscribe to all location updates
         stomp.subscribe("/location/*", async (message) => {
-          console.log("🌍 General location update:", message.body);
-          const bodyRes = await JSON.parse(message.body);
-          const loc_data = await bodyRes.response;
-          console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", bodyRes.response);
-          await setPricidedLoc([...loc_data]);
-          cosnole.log(providerLoc, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+          try {
+            const bodyRes = JSON.parse(message.body);
+            const loc_data = bodyRes.response;
+            setProviderLoc([...loc_data]);
+          } catch (error) {
+            console.error("❌ Error parsing location message:", error);
+          }
         });
       };
 
       stomp.onStompError = (frame) => {
-        console.error("❌ STOMP Protocol Error:", {
-          command: frame.command,
-          headers: frame.headers,
-          body: frame.body,
-        });
+        console.error("❌ STOMP Protocol Error:", frame);
       };
 
       stomp.onWebSocketError = (event) => {
@@ -143,54 +121,45 @@ export default function LeafletMap() {
 
       stomp.activate();
       setStompClient(stomp);
+    };
 
-      const sendLocation = async () => {
-        try {
-          console.log("📍 Requesting location permissions...");
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== "granted") {
-            console.warn("⚠️ Location permission denied");
-            return;
-          }
+    const sendLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("⚠️ Location permission denied");
+          return;
+        }
 
-          console.log("🛰 Getting current position...");
-          const { coords } = await Location.getCurrentPositionAsync({});
-          console.log("📌 Current coordinates:", coords);
+        const { coords } = await Location.getCurrentPositionAsync({});
+        setLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
 
-          setLocation({
+        const payload = {
+          token,
+          location: {
             latitude: coords.latitude,
             longitude: coords.longitude,
-          });
+          },
+        };
 
-          const payload = {
-            token,
-            location: {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            },
-          };
-
-          console.log("📤 Sending location update:", payload);
-          stomp.publish({
-            destination: "/app/update-location",
-            body: JSON.stringify(payload),
-            headers: { "content-type": "application/json" },
-          });
-        } catch (error) {
-          console.error("❌ Location update failed:", error);
-        }
-      };
-
-      // Send initial location and set up periodic updates
-      sendLocation();
-      interval = setInterval(sendLocation, 30000);
-      console.log("⏱ Started location update interval (30s)");
+        stomp.publish({
+          destination: "/app/update-location",
+          body: JSON.stringify(payload),
+          headers: { "content-type": "application/json" },
+        });
+      } catch (error) {
+        console.error("❌ Location update failed:", error);
+      }
     };
 
     connectWebSocket();
+    sendLocation();
+    interval = setInterval(sendLocation, 30000);
 
     return () => {
-      console.log("🧹 Cleaning up WebSocket connections...");
       clearInterval(interval);
       if (stomp) {
         if (userSubscription) userSubscription.unsubscribe();
@@ -201,6 +170,18 @@ export default function LeafletMap() {
       setStompClient(null);
     };
   }, [token, email]);
+
+  const handleCall = useCallback((phoneNumber) => {
+    Linking.openURL(`tel:${phoneNumber}`);
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -214,18 +195,21 @@ export default function LeafletMap() {
         }}
       >
         <Marker coordinate={location} title="Your Location" />
-        {serviceProviders.map((provider) => (
-          <Marker
-            key={provider.id}
-            coordinate={{
-              latitude: provider.latitude,
-              longitude: provider.longitude,
-            }}
-            title={provider.name}
-            description={provider.role}
-          />
-        ))}
-
+        {serviceProviders.map((provider) => {
+          console.log("Provider Data:", provider); // Debugging line
+          return (
+            <Marker
+              key={provider.id}
+              coordinate={{
+                latitude: provider.latitude,
+                longitude: provider.longitude,
+              }}
+              title={provider.name}
+              description={provider.role}
+              image={humanIcon}
+            />
+          );
+        })}
         {providerLoc.map((provider) => (
           <Marker
             key={provider.id}
@@ -235,9 +219,29 @@ export default function LeafletMap() {
             }}
             title={provider.name}
             description={provider.role}
+            image={carIcon}
           />
         ))}
       </MapView>
+      <Block flex={1.5}>
+        <FlatList
+          data={providerLoc}
+          keyExtractor={(item) => item.id.toString()}
+          numColumns={2}
+          contentContainerStyle={styles.listContainer}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text style={styles.text}>{item.name}</Text>
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => handleCall(item.phone)}
+              >
+                <Text style={styles.callText}>Call</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      </Block>
     </View>
   );
 }
@@ -248,6 +252,39 @@ const styles = StyleSheet.create({
   },
   map: {
     width: "100%",
-    height: "100%",
+    height: "60%",
+  },
+  listContainer: {
+    padding: 10,
+  },
+  item: {
+    flex: 1,
+    margin: 5,
+    backgroundColor: "#3498db",
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  text: {
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  callButton: {
+    backgroundColor: "#2ecc71",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  callText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -15,80 +15,41 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
-import { Picker } from "@react-native-picker/picker"; // Import Picker for role selection
+import { Picker } from "@react-native-picker/picker";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 
 export default function SignupForm() {
   const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
   const [password, setPassword] = useState("Anubhav123");
-  const [role, setRole] = useState("User"); // Default role is "User"
+  const [role, setRole] = useState("User");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width, height } = useWindowDimensions();
 
-  const [location, setLocation] = useState(null);
-  async function saveData(key, value) {
+  const saveData = async (key, value) =>
     await SecureStore.setItemAsync(key, value);
-  }
-
-  async function getData(key) {
-    return await SecureStore.getItemAsync(key);
-  } // State to hold location
-
-  // Function to get device location
-  async function getDeviceLocation() {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      alert("Permission to access location was denied");
-      return null;
-    }
-
-    const { coords } = await Location.getCurrentPositionAsync({});
-    setLocation(coords);
-    return coords;
-  }
+  const getDeviceLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") return Alert.alert("Permission denied");
+    return (await Location.getCurrentPositionAsync({})).coords;
+  };
 
   const handleSignup = async () => {
-    // if (!email || !password) {
-    //   Alert.alert("Error", "Please fill in all fields.");
-    //   return;
-    // }
-    // debugger;
-    // Get location before submitting signup form
-    const { latitude, longitude } = await getDeviceLocation();
-    // debugger;
-
-    // If location is not available, alert the user
-    // if (!location) {
-    //   Alert.alert("Error", "Could not get your location. Please try again.");
-    //   return;
-    // }
-
+    const { latitude, longitude } = (await getDeviceLocation()) || {};
     setLoading(true);
-
     try {
-      const response = await axios.post("http://172.20.10.2:8080/auth/login", {
-        email,
-        password,
-        role,
-        latitude,
-        longitude,
-      });
-      const user_data = await response.data;
-
-      if (response.status === 200) {
-        saveData("token", user_data.response.token);
-
-        saveData("email", email);
-
+      const { data, status } = await axios.post(
+        "http://192.168.5.216:8080/auth/login",
+        { email, password, role, latitude, longitude }
+      );
+      if (status === 200) {
+        await saveData("token", data.response.token);
+        await saveData("email", email);
         router.push("/map");
-      } else {
-        throw new Error("Unexpected response");
-      }
+      } else throw new Error("Unexpected response");
     } catch (error) {
-      console.error("Signup Error:", error);
-      Alert.alert("Error", "Signup failed. Please try again.");
+      Alert.alert("Signup failed, try again");
     } finally {
       setLoading(false);
     }
@@ -98,7 +59,7 @@ export default function SignupForm() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        style={styles.flexContainer}
       >
         <ScrollView
           contentContainerStyle={{ minHeight: height }}
@@ -108,59 +69,37 @@ export default function SignupForm() {
             <Text style={[styles.title, { fontSize: width * 0.07 }]}>
               Create Account
             </Text>
-
-            {/* Username Input */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { fontSize: width * 0.04 }]}>
-                Username
-              </Text>
-              <TextInput
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                style={[styles.input, { fontSize: width * 0.04 }]}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { fontSize: width * 0.04 }]}>
-                Password
-              </Text>
-              <TextInput
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                style={[styles.input, { fontSize: width * 0.04 }]}
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* Role Selection Dropdown */}
+            {["Email", "Password"].map((field, i) => (
+              <View key={i} style={styles.inputContainer}>
+                <Text style={[styles.label, { fontSize: width * 0.04 }]}>
+                  {field}
+                </Text>
+                <TextInput
+                  placeholder={`Enter your ${field.toLowerCase()}`}
+                  value={field === "Email" ? email : password}
+                  onChangeText={field === "Email" ? setEmail : setPassword}
+                  secureTextEntry={field === "Password"}
+                  style={[styles.input, { fontSize: width * 0.04 }]}
+                  autoCapitalize="none"
+                />
+              </View>
+            ))}
             <View style={styles.inputContainer}>
               <Text style={[styles.label, { fontSize: width * 0.04 }]}>
                 Select Role
               </Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={role}
-                  onValueChange={setRole}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="User" value="User" />
-                  <Picker.Item label="ServiceProvider" value="Admin" />
-                </Picker>
-              </View>
+              <Picker
+                selectedValue={role}
+                onValueChange={setRole}
+                style={styles.picker}
+              >
+                <Picker.Item label="User" value="User" />
+                <Picker.Item label="Service Provider" value="Admin" />
+              </Picker>
             </View>
-
-            {/* Signup Button */}
             <TouchableOpacity
               style={[styles.signupButton, { padding: height * 0.018 }]}
               onPress={handleSignup}
-              activeOpacity={0.8}
               disabled={loading}
             >
               {loading ? (
@@ -169,19 +108,17 @@ export default function SignupForm() {
                 <Text
                   style={[styles.signupButtonText, { fontSize: width * 0.045 }]}
                 >
-                  Sign Up
+                  Login
                 </Text>
               )}
             </TouchableOpacity>
-
-            {/* Login Link */}
             <TouchableOpacity
               style={styles.loginLink}
               onPress={() => router.push("/")}
             >
               <Text style={[styles.loginLinkText, { fontSize: width * 0.035 }]}>
                 Already have an account?{" "}
-                <Text style={styles.loginTextBold}>Login</Text>
+                <Text style={styles.loginTextBold}>Sign-Up</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -193,7 +130,7 @@ export default function SignupForm() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5" },
-  keyboardView: { flex: 1 },
+  flexContainer: { flex: 1 },
   formContainer: {
     alignSelf: "center",
     backgroundColor: "white",
@@ -219,13 +156,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: "4%",
     backgroundColor: "#fafafa",
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    backgroundColor: "#fafafa",
-    overflow: "hidden",
   },
   picker: { height: 50, width: "100%" },
   signupButton: {
