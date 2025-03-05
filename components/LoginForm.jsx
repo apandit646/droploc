@@ -21,6 +21,7 @@ import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Lock, Mail, User } from "lucide-react-native";
+import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
@@ -45,7 +46,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const { data, status } = await axios.post(
-        "http://192.168.5.216:8080/auth/login",
+        `http://${HOST}:${PORT}/auth/login`,
         { email, password, role, latitude, longitude }
       );
       if (status === 200) {
@@ -85,7 +86,7 @@ export default function LoginForm() {
 
               {/* Title */}
               <View style={styles.titleContainer}>
-                <Text style={styles.title}>Welcome Back! 👋</Text>
+                <Text style={styles.title}>DropDown</Text>
                 <View style={styles.subtitleUnderline} />
               </View>
 
@@ -123,12 +124,13 @@ export default function LoginForm() {
                   onValueChange={setRole}
                   style={styles.picker}
                   dropdownIconColor="#4ecdc4"
+                  
                 >
-                  <Picker.Item label="Userj" value="User" color="#6ecff2" />
+                  <Picker.Item label="🏠 User" value="User" color="black" />
                   <Picker.Item
-                    label="ServiceProvider"
+                    label="💼 ServiceProvider"
                     value="ServiceProvider"
-                    color="#6ecff2"
+                    color="black"
                   />
                 </Picker>
               </View>
@@ -142,7 +144,7 @@ export default function LoginForm() {
                 {loading ? (
                   <ActivityIndicator color="#0F2027" size="large" />
                 ) : (
-                  <Text style={styles.signupButtonText}>Login 🚀</Text>
+                  <Text style={styles.signupButtonText}>Login </Text>
                 )}
               </TouchableOpacity>
 

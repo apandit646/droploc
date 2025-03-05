@@ -14,6 +14,7 @@ import * as Location from "expo-location";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { Block } from "galio-framework";
+import { HOST, PORT } from "./API";
 
 export default function LeafletMap() {
   const [stompClient, setStompClient] = useState(null);
@@ -61,7 +62,7 @@ export default function LeafletMap() {
     let testSubscription;
 
     const connectWebSocket = () => {
-      socket = new SockJS("http://192.168.5.216:8080/ws-location");
+      socket = new SockJS(`http://${HOST}:${PORT}/ws-location`);
       stomp = new Client({
         webSocketFactory: () => socket,
         debug: (str) => console.log(`🐞 STOMP Debug: ${str}`),

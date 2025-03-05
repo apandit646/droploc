@@ -109,7 +109,7 @@ export default function SignupForm() {
 
     setIsLoading(true);
     try {
-      const apiUrl = "http://192.168.5.216:8080/auth/register";
+      const apiUrl = `http://${HOST}:${PORT}/auth/register`;
 
       const { name, email, phoneNo, password, role } = formData;
       const { latitude, longitude } = location;
@@ -164,10 +164,11 @@ export default function SignupForm() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContainer}
             >
+              
               <View style={styles.formContainer}>
                 {/* Futuristic Holographic Title */}
                 <View style={styles.titleContainer}>
-                  <Text style={styles.title}>Create Your Account 🚀</Text>
+                  <Text style={styles.title}>DropDown</Text>
                   <View style={styles.subtitleUnderline} />
                 </View>
 
@@ -254,16 +255,18 @@ export default function SignupForm() {
                       onValueChange={(value) => handleChange("role", value)}
                       style={styles.picker}
                       dropdownIconColor="#4ecdc4"
+                      
                     >
+                      
                       <Picker.Item
-                        label="User 🏠"
+                        label="🏠 User"
                         value="User"
-                        color="#6ecff2"
+                        color="black"
                       />
                       <Picker.Item
-                        label="Service Provider 💼"
+                        label="💼 Service Provider"
                         value="ServiceProvider"
-                        color="#6ecff2"
+                        color="black"
                       />
                     </Picker>
                   </View>
@@ -279,7 +282,7 @@ export default function SignupForm() {
                   {isLoading ? (
                     <ActivityIndicator color="#0F2027" size="large" />
                   ) : (
-                    <Text style={styles.signupButtonText}>Sign Up 🚀</Text>
+                    <Text style={styles.signupButtonText}>Sign Up</Text>
                   )}
                 </TouchableOpacity>
 
