@@ -54,9 +54,9 @@ export default function LeafletMap() {
 
     const connectWebSocket = () => {
       console.log("🔗 Initializing WebSocket connection...");
-      console.log("🌐 Connecting to:", "http://192.168.5.24:8080/ws-location");
+      console.log("🌐 Connecting to:", "http://172.20.10.2:8080/ws-location");
 
-      socket = new SockJS("http://192.168.5.24:8080/ws-location");
+      socket = new SockJS("http://172.20.10.2:8080/ws-location");
       stomp = new Client({
         webSocketFactory: () => socket,
         debug: (str) => console.log(`🐞 STOMP Debug: ${str}`),

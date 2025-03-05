@@ -99,7 +99,7 @@ export default function SignupForm() {
     }
 
     try {
-      const apiUrl = "http://192.168.5.24:8080/auth/register"; // Change to live API if needed
+      const apiUrl = "http://172.20.10.2:8080/auth/register"; // Change to live API if needed
 
       const response = await axios.post(apiUrl, {
         name,

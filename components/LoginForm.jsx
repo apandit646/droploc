@@ -41,48 +41,47 @@ export default function SignupForm() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       alert("Permission to access location was denied");
-      return;
+      return null;
     }
 
-    let location = await Location.getCurrentPositionAsync({});
-    console.log(location.coords.latitude, location.coords.longitude); // Logs the latitude and longitude
-    setLocation(location.coords); // Store location coordinates in state
+    const { coords } = await Location.getCurrentPositionAsync({});
+    setLocation(coords);
+    return coords;
   }
 
   const handleSignup = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
-      return;
-    }
-
+    // if (!email || !password) {
+    //   Alert.alert("Error", "Please fill in all fields.");
+    //   return;
+    // }
+    // debugger;
     // Get location before submitting signup form
-    await getDeviceLocation();
+    const { latitude, longitude } = await getDeviceLocation();
+    // debugger;
 
     // If location is not available, alert the user
-    if (!location) {
-      Alert.alert("Error", "Could not get your location. Please try again.");
-      return;
-    }
+    // if (!location) {
+    //   Alert.alert("Error", "Could not get your location. Please try again.");
+    //   return;
+    // }
 
     setLoading(true);
 
     try {
-      const response = await axios.post("http://192.168.5.24:8080/auth/login", {
+      const response = await axios.post("http://172.20.10.2:8080/auth/login", {
         email,
         password,
-        role, // Include role in the request
-        latitude: location.latitude, // Send latitude
-        longitude: location.longitude, // Send longitude
+        role,
+        latitude,
+        longitude,
       });
       const user_data = await response.data;
 
       if (response.status === 200) {
-        // Handle successful signup (you can navigate or show a success message here)
         saveData("token", user_data.response.token);
-        getData("token").then((data) => console.log(data));
+
         saveData("email", email);
-        // await SecureStore.setItemAsync("latitude", location.latitude);
-        // await SecureStore.setItemAsync("longitude", location.longitude);
+
         router.push("/map");
       } else {
         throw new Error("Unexpected response");
@@ -182,7 +181,7 @@ export default function SignupForm() {
             >
               <Text style={[styles.loginLinkText, { fontSize: width * 0.035 }]}>
                 Already have an account?{" "}
-                <Text style={styles.loginTextBold}>Sign-Up</Text>
+                <Text style={styles.loginTextBold}>Login</Text>
               </Text>
             </TouchableOpacity>
           </View>
