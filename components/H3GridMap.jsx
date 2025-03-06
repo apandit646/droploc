@@ -69,8 +69,10 @@ export default function LeafletMap() {
         reconnectDelay: 5000,
         onDisconnect: () => console.warn("⚠️ WebSocket Disconnected"),
       });
+      setStompClient(stomp);
+      stomp.onConnect = async (frame) => {
+        await sendLocation();
 
-      stomp.onConnect = (frame) => {
         const userTopic = `/user/${email}/location-sub`;
         userSubscription = stomp.subscribe(userTopic, (message) => {
           try {

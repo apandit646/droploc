@@ -14,6 +14,7 @@ import {
   Keyboard,
   Dimensions,
   ActivityIndicator,
+  Image
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
@@ -166,6 +167,11 @@ export default function SignupForm() {
             >
               
               <View style={styles.formContainer}>
+                <Image
+                  source={require("../assets/images/logo.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
                 {/* Futuristic Holographic Title */}
                 <View style={styles.titleContainer}>
                   <Text style={styles.title}>DropDown</Text>
@@ -405,5 +411,11 @@ const styles = StyleSheet.create({
   loginTextBold: {
     fontWeight: "bold",
     color: "#4ecdc4",
+  },
+  logo: {
+    width: "50%",
+    height: 100,
+    alignSelf: "center",
+    marginBottom: 20,
   },
 });
