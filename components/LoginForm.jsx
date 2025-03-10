@@ -124,7 +124,6 @@ export default function LoginForm() {
                   onValueChange={setRole}
                   style={styles.picker}
                   dropdownIconColor="#4ecdc4"
-                  
                 >
                   <Picker.Item label="🏠 User" value="User" color="black" />
                   <Picker.Item

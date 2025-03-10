@@ -1,13 +1,7 @@
 import React from "react";
 import { SafeAreaView } from "react-native";
-import H3GridMap from "../components/H3GridMap";
+import H3Map from "../components/H3Map";
 
-const Map = () => {
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <H3GridMap />
-    </SafeAreaView>
-  );
-};
-
-export default Map;
+export default function () {
+  return <SafeAreaView style={{ flex: 1 }}>{<H3Map />}</SafeAreaView>;
+}
