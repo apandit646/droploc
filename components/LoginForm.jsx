@@ -24,12 +24,11 @@ import { Lock, Mail, User } from "lucide-react-native";
 import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
-  const [password, setPassword] = useState("Anubhav123");
-  const [role, setRole] = useState("User");
+  const [email, setEmail] = useState("boss@gmail.com");
+  const [password, setPassword] = useState("12345678");
+  const [role, setRole] = useState("ServiceProvider");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
 
   const saveData = async (key, value) =>
     await SecureStore.setItemAsync(key, value);
@@ -52,7 +51,11 @@ export default function LoginForm() {
       if (status === 200) {
         await saveData("token", data.response.token);
         await saveData("email", email);
-        router.push("/map");
+        if (role === "User") {
+          router.push("/map");
+        } else if (role === "ServiceProvider") {
+          router.push("/service");
+        }
       } else throw new Error("Unexpected response");
     } catch (error) {
       console.log(error);

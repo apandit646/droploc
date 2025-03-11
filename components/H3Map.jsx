@@ -8,6 +8,7 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  TextInput,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -16,7 +17,6 @@ import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { HOST, PORT } from "./API";
 import axios from "axios";
-import { Block } from "galio-framework";
 
 export default function LeafletMap() {
   const carIcon = require("../assets/images/car_texi.png");
@@ -29,6 +29,7 @@ export default function LeafletMap() {
   const [stompClient, setStompClient] = useState(null);
   const [cellAddress, setCellAddress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [addressInput, setAddressInput] = useState("Yoooooooooooooooooooo");
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -135,6 +136,56 @@ export default function LeafletMap() {
     }
   }, [stompClient, cellAddress]);
 
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const toRad = (angle) => (angle * Math.PI) / 180;
+    const R = 6371; // Earth's radius in km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(2); // Distance in km
+  };
+
+  const sendRideRequest = async (providerId) => {
+    if (!token) {
+      console.error("❌ No token found, authentication required.");
+      return;
+    }
+    if (addressInput === "" || addressInput === null) {
+      console.error("❌ No Address found.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://${HOST}:${PORT}/api/v1/ride`,
+        {
+          serviceProviderId: providerId,
+          destinationLocation: addressInput,
+        }, // Sending providerId in the request body
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("✅ Ride request sent successfully:", response.data);
+      alert("Ride request sent successfully!");
+    } catch (error) {
+      console.error(
+        "❌ Error sending ride request:",
+        error.response?.data || error
+      );
+      alert("Failed to send ride request.");
+    }
+  };
+
   const sendLocationUpdate = () => {
     if (stompClient && stompClient.connected && location) {
       const message = {
@@ -155,8 +206,10 @@ export default function LeafletMap() {
   };
 
   useEffect(() => {
-    const interval = setInterval(sendLocationUpdate, 3000);
-    return () => clearInterval(interval);
+    if (stompClient && stompClient.connected) {
+      const interval = setInterval(sendLocationUpdate, 3000);
+      return () => clearInterval(interval);
+    }
   }, [stompClient, location]);
 
   const handleCall = useCallback((phoneNumber) => {
@@ -173,6 +226,10 @@ export default function LeafletMap() {
 
   return (
     <View style={styles.container}>
+      {/* Navbar */}
+      <View style={styles.navbar}>
+        <Text style={styles.navTitle}>DropDown</Text>
+      </View>
       <MapView
         style={styles.map}
         region={{
@@ -185,7 +242,6 @@ export default function LeafletMap() {
         <Marker coordinate={location} title="Your Location" image={humanIcon} />
 
         {providerLoc.map((provider, index) => {
-          console.log(provider);
           return (
             <Marker
               key={provider.id || index} // Unique key fix
@@ -199,34 +255,54 @@ export default function LeafletMap() {
           );
         })}
       </MapView>
-      <Block flex={1.5}>
+      <View style={{ flex: 1.5 }}>
         <FlatList
-          data={providerLoc}
+          data={providerLoc.map((provider) => ({
+            ...provider,
+            distance: location
+              ? getDistance(
+                  location.latitude,
+                  location.longitude,
+                  provider.latitude,
+                  provider.longitude
+                )
+              : "Calculating...",
+          }))}
           keyExtractor={(item) => item.id.toString()}
           numColumns={2}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
             <View style={styles.item}>
-              <Image
-                source={require("../assets/images/logo.png")}
-                style={styles.logo}
-              />
-              <Text style={styles.text}>{item.name}</Text>
-              <TouchableOpacity
-                style={styles.callButton}
-                onPress={() => handleCall(item.phone)}
-              >
-                <Text style={styles.callText}>Call</Text>
-              </TouchableOpacity>
+              <View style={styles.diaplaycard}>
+                <Image
+                  source={require("../assets/images/logo.png")}
+                  style={styles.logo}
+                />
+                <Text style={styles.text}>{item.name}</Text>
+              </View>
+              <View style={styles.diaplaycard}>
+                <Text style={styles.distanceText}>📍 {item.distance} km</Text>
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={() => sendRideRequest(item.id)}
+                >
+                  <Text style={styles.callText}>Request</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         />
-      </Block>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  diaplaycard: {
+    flexDirection: "column",
+    margin: 20,
+    alignSelf: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#1c1c1e",
@@ -241,9 +317,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#444",
   },
   logo: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
+    width: 50,
+    height: 50,
+    alignSelf: "center",
   },
   headerText: {
     color: "#fff",
@@ -265,10 +341,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
+    flexDirection: "row",
   },
   text: {
     color: "#fff",
     fontSize: 16,
+    marginBottom: 10,
+  },
+  distanceText: {
+    color: "#bbb",
+    fontSize: 14,
     marginBottom: 10,
   },
   callButton: {
