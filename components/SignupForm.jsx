@@ -14,7 +14,7 @@ import {
   Keyboard,
   Dimensions,
   ActivityIndicator,
-  Image
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
@@ -23,17 +23,18 @@ import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { User, Mail, PhoneCall, Lock, Check } from "lucide-react-native";
+import { HOST, PORT } from "./API";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SignupForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phoneNo: "",
-    password: "",
-    confirmPassword: "",
+    name: "soham",
+    email: "bitch3@gmail.com",
+    phoneNo: "5212456789",
+    password: "soham123",
+    confirmPassword: "soham123",
     role: "User",
   });
 
@@ -101,6 +102,8 @@ export default function SignupForm() {
     return validationErrors;
   };
 
+  const saveData = async (key, value) =>
+    await SecureStore.setItemAsync(key, value);
   const handleSignup = async () => {
     const errors = validateFields();
     if (Object.keys(errors).length > 0) {
@@ -115,7 +118,7 @@ export default function SignupForm() {
       const { name, email, phoneNo, password, role } = formData;
       const { latitude, longitude } = location;
 
-      const response = await axios.post(apiUrl, {
+      const { data, status } = await axios.post(apiUrl, {
         name,
         email,
         phoneNo,
@@ -125,17 +128,17 @@ export default function SignupForm() {
         longitude,
       });
 
-      if (response.data.success) {
-        await SecureStore.setItemAsync("secure_token", response.data.token);
-        await SecureStore.setItemAsync(
-          "refresh_token",
-          response.data.refreshToken
-        );
-        await SecureStore.setItemAsync("latitude", String(latitude));
-        await SecureStore.setItemAsync("longitude", String(longitude));
-
+      if (status === 200) {
+        await saveData("token", data.response.token);
+        await saveData("refreshToken", data.response.refreshToken);
+        await saveData("email", email);
+        await saveData("id", data.response.id);
         Alert.alert("🎉 Success", "Signup successful!");
-        router.push("/map");
+        if (role === "User") {
+          router.push("/map");
+        } else if (role === "ServiceProvider") {
+          router.push("/service");
+        }
       } else {
         Alert.alert(
           "❌ Signup Failed",
@@ -165,7 +168,6 @@ export default function SignupForm() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContainer}
             >
-              
               <View style={styles.formContainer}>
                 <Image
                   source={require("../assets/images/logo.png")}
@@ -261,14 +263,8 @@ export default function SignupForm() {
                       onValueChange={(value) => handleChange("role", value)}
                       style={styles.picker}
                       dropdownIconColor="#4ecdc4"
-                      
                     >
-                      
-                      <Picker.Item
-                        label="🏠 User"
-                        value="User"
-                        color="black"
-                      />
+                      <Picker.Item label="🏠 User" value="User" color="black" />
                       <Picker.Item
                         label="💼 Service Provider"
                         value="ServiceProvider"

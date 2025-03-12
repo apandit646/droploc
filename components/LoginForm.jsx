@@ -24,9 +24,9 @@ import { Lock, Mail, User } from "lucide-react-native";
 import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("boss@gmail.com");
-  const [password, setPassword] = useState("12345678");
-  const [role, setRole] = useState("ServiceProvider");
+  const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
+  const [password, setPassword] = useState("Anubhav123");
+  const [role, setRole] = useState("User");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -51,6 +51,8 @@ export default function LoginForm() {
       if (status === 200) {
         await saveData("token", data.response.token);
         await saveData("email", email);
+        await saveData("refreshToken", data.response.refreshToken);
+        await saveData("id", data.response.id);
         if (role === "User") {
           router.push("/map");
         } else if (role === "ServiceProvider") {
