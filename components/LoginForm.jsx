@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
-  useWindowDimensions,
   ActivityIndicator,
   Image,
 } from "react-native";

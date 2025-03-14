@@ -1,2 +1,2 @@
-export const HOST = "192.168.5.216"
-export const PORT = "8080"
+export const HOST = "192.168.1.8";
+export const PORT = "8080";

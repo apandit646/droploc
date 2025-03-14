@@ -17,6 +17,7 @@ import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { HOST, PORT } from "./API";
 import axios from "axios";
+import { CountdownCircleTimer } from "react-native-countdown-circle-timer";
 
 export default function LeafletMap() {
   const carIcon = require("../assets/images/car_texi.png");
@@ -29,7 +30,9 @@ export default function LeafletMap() {
   const [stompClient, setStompClient] = useState(null);
   const [cellAddress, setCellAddress] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [addressInput, setAddressInput] = useState("Yoooooooooooooooooooo");
+  const [addressInput, setAddressInput] = useState("");
+
+  const [statuses, setStatues] = useState({});
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -162,6 +165,11 @@ export default function LeafletMap() {
     }
 
     try {
+      setStatues((d) => {
+        const r = { ...d };
+        r[providerId] = "in-progress";
+        return r;
+      });
       const response = await axios.post(
         `http://${HOST}:${PORT}/api/v1/ride`,
         {
@@ -212,9 +220,9 @@ export default function LeafletMap() {
     }
   }, [stompClient, location]);
 
-  const handleCall = useCallback((phoneNumber) => {
-    Linking.openURL(`tel:${phoneNumber}`);
-  }, []);
+  const handleChange = (value) => {
+    setAddressInput(value);
+  };
 
   if (loading) {
     return (
@@ -227,9 +235,17 @@ export default function LeafletMap() {
   return (
     <View style={styles.container}>
       {/* Navbar */}
-      <View style={styles.navbar}>
-        <Text style={styles.navTitle}>DropDown</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>DropDown</Text>
+        <TextInput
+          placeholder="Enter Address"
+          value={addressInput}
+          onChangeText={handleChange} // Corrected event handler
+          style={styles.inputAddress}
+          placeholderTextColor="#6ecff2"
+        />
       </View>
+
       <MapView
         style={styles.map}
         region={{
@@ -282,12 +298,36 @@ export default function LeafletMap() {
               </View>
               <View style={styles.diaplaycard}>
                 <Text style={styles.distanceText}>📍 {item.distance} km</Text>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() => sendRideRequest(item.id)}
-                >
-                  <Text style={styles.callText}>Request</Text>
-                </TouchableOpacity>
+                {statuses[item.id] != "in-progress" && (
+                  <TouchableOpacity
+                    style={styles.callButton}
+                    onPress={() => sendRideRequest(item.id)}
+                  >
+                    <Text style={styles.callText}>Request</Text>
+                  </TouchableOpacity>
+                )}
+                {statuses[item.id] == "in-progress" && (
+                  <CountdownCircleTimer
+                    isPlaying={true}
+                    duration={30}
+                    colors={"#4ECDC4"}
+                    updateInterval={1}
+                    size={30}
+                    strokeWidth={3}
+                    onComplete={() => {
+                      // if we decide to perform some task call method here
+                      return { shouldRepeat: false, delay: 2 };
+                    }}
+                  >
+                    {({ remainingTime, color }) => (
+                      <Text style={{ color, fontSize: 10 }}>
+                        {" "}
+                        {/* Reduce font size */}
+                        {remainingTime}
+                      </Text>
+                    )}
+                  </CountdownCircleTimer>
+                )}
               </View>
             </View>
           )}
@@ -303,12 +343,23 @@ const styles = StyleSheet.create({
     margin: 20,
     alignSelf: "center",
   },
+  inputAddress: {
+    width: "90%",
+    backgroundColor: "#333",
+    color: "#fff",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10, // Ensures it's below the "DropDown" text
+    borderWidth: 1,
+    borderColor: "rgba(78,205,196,0.3)",
+    alignSelf: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#1c1c1e",
   },
   header: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,

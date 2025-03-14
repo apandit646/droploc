@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -13,6 +13,7 @@ import * as Location from "expo-location";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { HOST, PORT } from "./API";
+import ActionSheet from "react-native-actions-sheet";
 
 export default function ServiceH3Map() {
   const [location, setLocation] = useState(null);
@@ -23,6 +24,9 @@ export default function ServiceH3Map() {
   const [email, setEmail] = useState(null);
   const [token, setToken] = useState(null);
   const [id, setId] = useState(null);
+  const [currentMessage, setCurrentMessage] = useState(null);
+  const messageQueue = useRef([]);
+  const actionSheetRef = useRef(null);
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -90,7 +94,7 @@ export default function ServiceH3Map() {
         const subscription = client.subscribe(destination, (message) => {
           const newMessage = JSON.parse(message.body);
           console.log(`Notification from ${destination}:`, newMessage);
-          setRequests((prevRequests) => [...prevRequests, newMessage]);
+          enqueueMessage(newMessage);
         });
         client.subscription = subscription;
       },
@@ -107,6 +111,26 @@ export default function ServiceH3Map() {
       client.deactivate();
     };
   }, [email, token]);
+
+  const enqueueMessage = (message) => {
+    messageQueue.current.push(message);
+    if (!currentMessage) {
+      displayNextMessage();
+    }
+  };
+
+  const displayNextMessage = () => {
+    if (messageQueue.current.length > 0) {
+      const nextMessage = messageQueue.current.shift();
+      setCurrentMessage(nextMessage);
+      actionSheetRef.current?.show();
+      setTimeout(() => {
+        actionSheetRef.current?.hide();
+        setCurrentMessage(null);
+        displayNextMessage();
+      }, 7000);
+    }
+  };
 
   const sendLocationUpdate = () => {
     if (stompClient && stompClient.connected && location) {
@@ -129,10 +153,16 @@ export default function ServiceH3Map() {
 
   useEffect(() => {
     if (stompClient && stompClient.connected) {
-      const interval = setInterval(sendLocationUpdate, 30000);
+      const interval = setInterval(sendLocationUpdate, 3000);
       return () => clearInterval(interval);
     }
   }, [stompClient, location]);
+
+  const handleAcceptRequest = (message) => {
+    console.log("Processing request:", message);
+    // Add your logic to process the request
+    // Example: Send the request to the backend or update state
+  };
 
   if (loading) {
     return (
@@ -145,8 +175,8 @@ export default function ServiceH3Map() {
   return (
     <View style={styles.container}>
       {/* Navbar */}
-      <View style={styles.navbar}>
-        <Text style={styles.navTitle}>DropDown</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>DropDown</Text>
       </View>
 
       {/* Map Section */}
@@ -171,22 +201,29 @@ export default function ServiceH3Map() {
         )}
       </MapView>
 
-      {/* Bottom Section - Request List */}
-      <View style={styles.bottomContainer}>
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.requestItem}>
-              <Text style={styles.requestText}>{item.name}</Text>
-              <Text style={styles.addressText}>{item.address}</Text>
-              <TouchableOpacity style={styles.acceptButton}>
-                <Text style={styles.acceptText}>Accept</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
-      </View>
+      <ActionSheet ref={actionSheetRef}>
+        {currentMessage ? (
+          <View style={styles.messageContainer}>
+            <Text style={styles.messageTitle}>New Request</Text>
+            <Text style={styles.messageText}>
+              {currentMessage.requestingUser.name} -{" "}
+              {currentMessage.destinationLocation}
+            </Text>
+            <Text style={styles.messageText}>
+              Distance: {currentMessage.distanceToPickUp.toFixed(2)} km
+            </Text>
+            <TouchableOpacity
+              style={styles.acceptButton}
+              onPress={() => handleAcceptRequest(currentMessage)}
+            >
+              <Text style={styles.buttonText}>Accept Request</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Add button to accept it and add an action to that where i am sending current message to get processed
+          <Text style={styles.messageText}>No messages</Text>
+        )}
+      </ActionSheet>
     </View>
   );
 }
@@ -217,6 +254,20 @@ const styles = StyleSheet.create({
     flex: 2,
     backgroundColor: "#2c2c2e",
     padding: 10,
+  },
+  headerText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#2c2c2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#444",
   },
   requestItem: {
     backgroundColor: "#3a3a3c",
@@ -252,4 +303,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#1c1c1e",
   },
+  messageContainer: { padding: 20, alignItems: "center" },
+  messageTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  messageText: { fontSize: 16, color: "#000000" },
 });

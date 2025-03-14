@@ -30,11 +30,11 @@ const { width, height } = Dimensions.get("window");
 export default function SignupForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: "soham",
-    email: "bitch3@gmail.com",
-    phoneNo: "5212456789",
-    password: "soham123",
-    confirmPassword: "soham123",
+    name: "",
+    email: "",
+    phoneNo: "",
+    password: "",
+    confirmPassword: "",
     role: "User",
   });
 

@@ -52,6 +52,8 @@
     "react-dom": "18.3.1",
     "react-leaflet": "^4.2.1",
     "react-native": "0.76.6",
+    "react-native-actions-sheet": "^0.9.7",
+    "react-native-countdown-circle-timer": "^3.2.1",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-maps": "^1.18.0",
     "react-native-reanimated": "~3.16.1",
