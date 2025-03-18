@@ -417,6 +417,11 @@ export default function H3Map() {
                       size={30}
                       strokeWidth={3}
                       onComplete={() => {
+                        setStatues((d) => {
+                          const r = { ...d };
+                          r[item.id] = "";
+                          return r;
+                        });
                         // if we decide to perform some task call method here
                         return { shouldRepeat: false, delay: 2 };
                       }}

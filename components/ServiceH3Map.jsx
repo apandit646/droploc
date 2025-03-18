@@ -298,6 +298,9 @@ export default function ServiceH3Map() {
           )}
         </ActionSheet>
       </View>
+      <View style={styles.footer}>
+        <Text style={styles.text}>© 2025 MyApp. All rights reserved.</Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -402,5 +405,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000000",
     marginBottom: 8,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "#333",
+    padding: 15,
+    alignItems: "center",
+  },
+  text: {
+    color: "#fff",
+    fontSize: 14,
   },
 });
