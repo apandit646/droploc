@@ -12,19 +12,19 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Image,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
-import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
-import { Lock, Mail, User } from "lucide-react-native";
+import { Lock, Mail } from "lucide-react-native";
 import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
-  const [password, setPassword] = useState("Anubhav123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("User");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -32,20 +32,12 @@ export default function LoginForm() {
   const saveData = async (key, value) =>
     await SecureStore.setItemAsync(key, value);
 
-  const getDeviceLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted")
-      return Alert.alert("Location Permission Denied 📍");
-    return (await Location.getCurrentPositionAsync({})).coords;
-  };
-
   const handleLogin = async () => {
-    const { latitude, longitude } = (await getDeviceLocation()) || {};
     setLoading(true);
     try {
       const { data, status } = await axios.post(
         `http://${HOST}:${PORT}/auth/login`,
-        { email, password, role, latitude, longitude }
+        { email, password, role }
       );
       if (status === 200) {
         await saveData("token", data.response.token);
@@ -60,14 +52,19 @@ export default function LoginForm() {
       } else throw new Error("Unexpected response");
     } catch (error) {
       console.log(error);
-      Alert.alert("Signup Failed 😔", "Please try again");
+      Alert.alert("Login Failed 😔", "Please try again");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
       <LinearGradient
         colors={["#0F2027", "#203A43", "#2C5364"]}
         style={styles.background}
@@ -122,16 +119,16 @@ export default function LoginForm() {
 
               {/* Role Picker */}
               <View style={styles.pickerContainer}>
-                <Text style={styles.pickerLabel}>Select Your Role 👤</Text>
+                <Text style={styles.pickerLabel}>Select Your Role</Text>
                 <Picker
                   selectedValue={role}
                   onValueChange={setRole}
                   style={styles.picker}
                   dropdownIconColor="#4ecdc4"
                 >
-                  <Picker.Item label="🏠 User" value="User" color="black" />
+                  <Picker.Item label="User" value="User" color="black" />
                   <Picker.Item
-                    label="💼 ServiceProvider"
+                    label="Driver"
                     value="ServiceProvider"
                     color="black"
                   />
@@ -147,7 +144,7 @@ export default function LoginForm() {
                 {loading ? (
                   <ActivityIndicator color="#0F2027" size="large" />
                 ) : (
-                  <Text style={styles.signupButtonText}>Login </Text>
+                  <Text style={styles.signupButtonText}>Login</Text>
                 )}
               </TouchableOpacity>
 
@@ -165,7 +162,7 @@ export default function LoginForm() {
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -175,6 +172,10 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
+    // This will fill the entire screen including status bar area on iOS
+    ...(Platform.OS === "ios"
+      ? { paddingTop: 0 }
+      : { paddingTop: StatusBar.currentHeight }),
   },
   keyboardAvoidContainer: {
     flex: 1,

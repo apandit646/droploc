@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,20 +12,17 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Dimensions,
   ActivityIndicator,
   Image,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
-import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { User, Mail, PhoneCall, Lock, Check } from "lucide-react-native";
 import { HOST, PORT } from "./API";
-
-const { width, height } = Dimensions.get("window");
 
 export default function SignupForm() {
   const router = useRouter();
@@ -38,85 +35,21 @@ export default function SignupForm() {
     role: "User",
   });
 
-  const [location, setLocation] = useState(null);
-  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    getLocation();
-  }, []);
-
-  const getLocation = async () => {
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "🌍 Permission Denied",
-          "Allow location access to continue."
-        );
-        return;
-      }
-      let { coords } = await Location.getCurrentPositionAsync({});
-      setLocation({ latitude: coords.latitude, longitude: coords.longitude });
-    } catch (error) {
-      console.error("Location Error:", error);
-      Alert.alert("🚨 Location Error", "Could not fetch location.");
-    }
-  };
 
   const handleChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
   }, []);
-
-  const validateFields = () => {
-    const { name, email, phoneNo, password, confirmPassword } = formData;
-    let validationErrors = {};
-
-    if (!name) validationErrors.name = "👤 Full Name is required";
-    if (!email) validationErrors.email = "📧 Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      validationErrors.email = "📛 Invalid email format";
-
-    if (!phoneNo) validationErrors.phoneNo = "📱 Phone number is required";
-    else if (!/^[0-9]{10}$/.test(phoneNo))
-      validationErrors.phoneNo = "📞 Phone number must be 10 digits";
-
-    if (!password) validationErrors.password = "🔐 Password is required";
-    else if (
-      password.length < 6 ||
-      !/[A-Za-z]/.test(password) ||
-      !/\d/.test(password)
-    )
-      validationErrors.password =
-        "🛡️ Password must be at least 6 characters and contain letters and numbers";
-
-    if (!confirmPassword)
-      validationErrors.confirmPassword = "🔒 Confirm Password is required";
-    else if (password !== confirmPassword)
-      validationErrors.confirmPassword = "❌ Passwords do not match";
-
-    if (!location)
-      validationErrors.location = "🌐 Location permission required";
-
-    return validationErrors;
-  };
 
   const saveData = async (key, value) =>
     await SecureStore.setItemAsync(key, value);
-  const handleSignup = async () => {
-    const errors = validateFields();
-    if (Object.keys(errors).length > 0) {
-      setErrors(errors);
-      return;
-    }
 
+  const handleSignup = async () => {
     setIsLoading(true);
     try {
       const apiUrl = `http://${HOST}:${PORT}/auth/register`;
 
       const { name, email, phoneNo, password, role } = formData;
-      const { latitude, longitude } = location;
 
       const { data, status } = await axios.post(apiUrl, {
         name,
@@ -124,8 +57,6 @@ export default function SignupForm() {
         phoneNo,
         password,
         role,
-        latitude,
-        longitude,
       });
 
       if (status === 200) {
@@ -154,165 +85,172 @@ export default function SignupForm() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
       <LinearGradient
         colors={["#0F2027", "#203A43", "#2C5364"]}
         style={styles.background}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.keyboardAvoidContainer}
-          >
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContainer}
+        <SafeAreaView style={styles.safeArea}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={styles.keyboardAvoidContainer}
             >
-              <View style={styles.formContainer}>
-                <Image
-                  source={require("../assets/images/logo.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-                {/* Futuristic Holographic Title */}
-                <View style={styles.titleContainer}>
-                  <Text style={styles.title}>DropDown</Text>
-                  <View style={styles.subtitleUnderline} />
-                </View>
-
-                {/* Error Messages */}
-                {Object.keys(errors).map(
-                  (key) =>
-                    errors[key] && (
-                      <Text key={key} style={styles.errorText}>
-                        {errors[key]}
-                      </Text>
-                    )
-                )}
-
-                {/* Input Fields with Icons */}
-                <View style={styles.inputGroup}>
-                  <View style={styles.iconInputContainer}>
-                    <User color="#4ecdc4" size={24} style={styles.icon} />
-                    <TextInput
-                      placeholder="Full Name"
-                      value={formData.name}
-                      onChangeText={(value) => handleChange("name", value)}
-                      style={styles.input}
-                      placeholderTextColor="#6ecff2"
-                    />
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContainer}
+              >
+                <View style={styles.formContainer}>
+                  <Image
+                    source={require("../assets/images/logo.png")}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  {/* Futuristic Holographic Title */}
+                  <View style={styles.titleContainer}>
+                    <Text style={styles.title}>DropDown</Text>
+                    <View style={styles.subtitleUnderline} />
                   </View>
 
-                  <View style={styles.iconInputContainer}>
-                    <Mail color="#4ecdc4" size={24} style={styles.icon} />
-                    <TextInput
-                      placeholder="Email"
-                      value={formData.email}
-                      onChangeText={(value) => handleChange("email", value)}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={styles.input}
-                      placeholderTextColor="#6ecff2"
-                    />
-                  </View>
-
-                  <View style={styles.iconInputContainer}>
-                    <PhoneCall color="#4ecdc4" size={24} style={styles.icon} />
-                    <TextInput
-                      placeholder="Phone Number"
-                      value={formData.phoneNo}
-                      onChangeText={(value) => handleChange("phoneNo", value)}
-                      keyboardType="phone-pad"
-                      maxLength={10}
-                      style={styles.input}
-                      placeholderTextColor="#6ecff2"
-                    />
-                  </View>
-
-                  <View style={styles.iconInputContainer}>
-                    <Lock color="#4ecdc4" size={24} style={styles.icon} />
-                    <TextInput
-                      placeholder="Password"
-                      value={formData.password}
-                      onChangeText={(value) => handleChange("password", value)}
-                      secureTextEntry
-                      style={styles.input}
-                      placeholderTextColor="#6ecff2"
-                    />
-                  </View>
-
-                  <View style={styles.iconInputContainer}>
-                    <Check color="#4ecdc4" size={24} style={styles.icon} />
-                    <TextInput
-                      placeholder="Confirm Password"
-                      value={formData.confirmPassword}
-                      onChangeText={(value) =>
-                        handleChange("confirmPassword", value)
-                      }
-                      secureTextEntry
-                      style={styles.input}
-                      placeholderTextColor="#6ecff2"
-                    />
-                  </View>
-
-                  {/* Role Picker */}
-                  <View style={styles.pickerContainer}>
-                    <Text style={styles.pickerLabel}>Select Your Role 👤</Text>
-                    <Picker
-                      selectedValue={formData.role}
-                      onValueChange={(value) => handleChange("role", value)}
-                      style={styles.picker}
-                      dropdownIconColor="#4ecdc4"
-                    >
-                      <Picker.Item label="🏠 User" value="User" color="black" />
-                      <Picker.Item
-                        label="💼 Service Provider"
-                        value="ServiceProvider"
-                        color="black"
+                  {/* Input Fields with Icons */}
+                  <View style={styles.inputGroup}>
+                    <View style={styles.iconInputContainer}>
+                      <User color="#4ecdc4" size={24} style={styles.icon} />
+                      <TextInput
+                        placeholder="Full Name"
+                        value={formData.name}
+                        onChangeText={(value) => handleChange("name", value)}
+                        style={styles.input}
+                        placeholderTextColor="#6ecff2"
                       />
-                    </Picker>
+                    </View>
+
+                    <View style={styles.iconInputContainer}>
+                      <Mail color="#4ecdc4" size={24} style={styles.icon} />
+                      <TextInput
+                        placeholder="Email"
+                        value={formData.email}
+                        onChangeText={(value) => handleChange("email", value)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        style={styles.input}
+                        placeholderTextColor="#6ecff2"
+                      />
+                    </View>
+
+                    <View style={styles.iconInputContainer}>
+                      <PhoneCall
+                        color="#4ecdc4"
+                        size={24}
+                        style={styles.icon}
+                      />
+                      <TextInput
+                        placeholder="Phone Number"
+                        value={formData.phoneNo}
+                        onChangeText={(value) => handleChange("phoneNo", value)}
+                        keyboardType="phone-pad"
+                        maxLength={10}
+                        style={styles.input}
+                        placeholderTextColor="#6ecff2"
+                      />
+                    </View>
+
+                    <View style={styles.iconInputContainer}>
+                      <Lock color="#4ecdc4" size={24} style={styles.icon} />
+                      <TextInput
+                        placeholder="Password"
+                        value={formData.password}
+                        onChangeText={(value) =>
+                          handleChange("password", value)
+                        }
+                        secureTextEntry
+                        style={styles.input}
+                        placeholderTextColor="#6ecff2"
+                      />
+                    </View>
+
+                    <View style={styles.iconInputContainer}>
+                      <Check color="#4ecdc4" size={24} style={styles.icon} />
+                      <TextInput
+                        placeholder="Confirm Password"
+                        value={formData.confirmPassword}
+                        onChangeText={(value) =>
+                          handleChange("confirmPassword", value)
+                        }
+                        secureTextEntry
+                        style={styles.input}
+                        placeholderTextColor="#6ecff2"
+                      />
+                    </View>
+
+                    {/* Role Picker */}
+                    <View style={styles.pickerContainer}>
+                      <Text style={styles.pickerLabel}>Select Your Role</Text>
+                      <Picker
+                        selectedValue={formData.role}
+                        onValueChange={(value) => handleChange("role", value)}
+                        style={styles.picker}
+                        dropdownIconColor="#4ecdc4"
+                      >
+                        <Picker.Item label="User" value="User" color="black" />
+                        <Picker.Item
+                          label="Driver"
+                          value="ServiceProvider"
+                          color="black"
+                        />
+                      </Picker>
+                    </View>
                   </View>
+
+                  {/* Signup Button */}
+                  <TouchableOpacity
+                    style={styles.signupButton}
+                    onPress={handleSignup}
+                    activeOpacity={0.7}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#0F2027" size="large" />
+                    ) : (
+                      <Text style={styles.signupButtonText}>Sign Up</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Login Link */}
+                  <TouchableOpacity
+                    style={styles.loginLink}
+                    onPress={() => router.push("/login")}
+                  >
+                    <Text style={styles.loginLinkText}>
+                      Already have an account?{" "}
+                      <Text style={styles.loginTextBold}>Login 🔐</Text>
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-
-                {/* Signup Button */}
-                <TouchableOpacity
-                  style={styles.signupButton}
-                  onPress={handleSignup}
-                  activeOpacity={0.7}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#0F2027" size="large" />
-                  ) : (
-                    <Text style={styles.signupButtonText}>Sign Up</Text>
-                  )}
-                </TouchableOpacity>
-
-                {/* Login Link */}
-                <TouchableOpacity
-                  style={styles.loginLink}
-                  onPress={() => router.push("/login")}
-                >
-                  <Text style={styles.loginLinkText}>
-                    Already have an account?{" "}
-                    <Text style={styles.loginTextBold}>Login 🔐</Text>
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
+        </SafeAreaView>
       </LinearGradient>
-    </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
   },
   background: {
     flex: 1,
+    // This will fill the entire screen including status bar area on iOS
+    ...(Platform.OS === "ios"
+      ? { paddingTop: 0 }
+      : { paddingTop: StatusBar.currentHeight }),
   },
   keyboardAvoidContainer: {
     flex: 1,
@@ -392,11 +330,6 @@ const styles = StyleSheet.create({
     color: "#0F2027",
     fontSize: 18,
     fontWeight: "bold",
-  },
-  errorText: {
-    color: "#ff6b6b",
-    textAlign: "center",
-    marginBottom: 10,
   },
   loginLink: {
     alignItems: "center",

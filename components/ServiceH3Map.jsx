@@ -3,9 +3,10 @@ import {
   StyleSheet,
   View,
   ActivityIndicator,
-  FlatList,
   Text,
   TouchableOpacity,
+  StatusBar,
+  SafeAreaView,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -14,8 +15,11 @@ import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { HOST, PORT } from "./API";
 import ActionSheet from "react-native-actions-sheet";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { useRouter } from "expo-router";
 
 export default function ServiceH3Map() {
+  const router = useRouter();
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stompClient, setStompClient] = useState(null);
@@ -27,6 +31,9 @@ export default function ServiceH3Map() {
   const [currentMessage, setCurrentMessage] = useState(null);
   const messageQueue = useRef([]);
   const actionSheetRef = useRef(null);
+
+  // Use ref to store location subscription for cleanup
+  const locationSubscriptionRef = useRef(null);
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -46,37 +53,65 @@ export default function ServiceH3Map() {
       }
     };
 
-    fetchAuthData();
-  }, []);
-
-  // Get the user's current location
-  useEffect(() => {
-    const getLocation = async () => {
+    // Setup real-time location tracking
+    const setupLocationTracking = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           console.error("❌ Permission to access location was denied");
+          setLoading(false);
           return;
         }
+
+        // Get initial location
         const currentLocation = await Location.getCurrentPositionAsync({});
+        console.log("Setting initial location:", currentLocation);
         setLocation({
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude,
         });
+
+        // Start continuous location updates
+        const subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5, // Update if device moves by 5 meters
+            timeInterval: 3000, // Update every 3 seconds
+          },
+          (newLocation) => {
+            console.log("📍 Location updated:", newLocation.coords);
+            setLocation({
+              latitude: newLocation.coords.latitude,
+              longitude: newLocation.coords.longitude,
+            });
+          }
+        );
+
+        // Store the subscription in the ref for cleanup
+        locationSubscriptionRef.current = subscription;
+        setLoading(false);
       } catch (error) {
-        console.error("❌ Error getting location:", error);
-      } finally {
+        console.error("❌ Error setting up location tracking:", error);
         setLoading(false);
       }
     };
 
-    getLocation();
+    fetchAuthData();
+    setupLocationTracking();
 
     // Dummy request data
     setRequests([
       { id: 1, name: "John Doe", address: "123 Main St" },
       { id: 2, name: "Alice Smith", address: "456 Oak St" },
     ]);
+
+    // Clean up the location subscription on component unmount
+    return () => {
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+        console.log("🧹 Location tracking subscription removed");
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -87,30 +122,30 @@ export default function ServiceH3Map() {
       webSocketFactory: () => socket,
       debug: (str) => console.log("WebSocket Debug:", str),
       onConnect: () => {
-        console.log("WebSocket Connected");
+        console.log("✅ WebSocket Connected");
         setStompClient(client);
 
         const destination = `/notification/${id}`;
         const subscription = client.subscribe(destination, (message) => {
           const newMessage = JSON.parse(message.body);
-          console.log(`Notification from ${destination}:`, newMessage);
+          console.log(`📬 Notification from ${destination}:`, newMessage);
           enqueueMessage(newMessage);
         });
         client.subscription = subscription;
       },
-      onDisconnect: () => console.log("WebSocket Disconnected"),
-      onStompError: (frame) => console.error("STOMP Error:", frame),
+      onDisconnect: () => console.log("❌ WebSocket Disconnected"),
+      onStompError: (frame) => console.error("❗ STOMP Error:", frame),
     });
     client.activate();
 
     return () => {
       if (client && client.subscription) {
         client.subscription.unsubscribe();
-        console.log("Unsubscribed from notifications");
+        console.log("🔄 Unsubscribed from notifications");
       }
       client.deactivate();
     };
-  }, [email, token]);
+  }, [email, token, id]);
 
   const enqueueMessage = (message) => {
     messageQueue.current.push(message);
@@ -132,8 +167,9 @@ export default function ServiceH3Map() {
     }
   };
 
-  const sendLocationUpdate = () => {
-    if (stompClient && stompClient.connected && location) {
+  // Enhanced with useCallback for better performance
+  const sendLocationUpdate = React.useCallback(() => {
+    if (stompClient && stompClient.connected && location && token) {
       const message = {
         token: token,
         location: {
@@ -147,21 +183,35 @@ export default function ServiceH3Map() {
       });
       console.log("📤 Sent location update:", message);
     } else {
-      console.error("⚠️ Cannot send message: WebSocket is not connected.");
+      console.log("⚠️ Cannot send location update: Missing required data");
+      if (!stompClient) console.log("   - StompClient not initialized");
+      else if (!stompClient.connected)
+        console.log("   - StompClient not connected");
+      if (!location) console.log("   - Location not available");
+      if (!token) console.log("   - Token not available");
     }
-  };
+  }, [stompClient, location, token]);
 
   useEffect(() => {
-    if (stompClient && stompClient.connected) {
+    if (stompClient && stompClient.connected && location) {
+      // Send immediate update when location changes
+      sendLocationUpdate();
+
+      // Setup interval for regular updates
       const interval = setInterval(sendLocationUpdate, 3000);
       return () => clearInterval(interval);
     }
-  }, [stompClient, location]);
+  }, [stompClient, location, sendLocationUpdate]);
 
   const handleAcceptRequest = (message) => {
     console.log("Processing request:", message);
+    actionSheetRef.current?.hide();
+    setCurrentMessage(null);
     // Add your logic to process the request
     // Example: Send the request to the backend or update state
+  };
+  const handleBackButton = () => {
+    router.push("/login");
   };
 
   if (loading) {
@@ -173,62 +223,80 @@ export default function ServiceH3Map() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Navbar */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>DropDown</Text>
-      </View>
-
-      {/* Map Section */}
-      <MapView
-        style={styles.map}
-        region={{
-          latitude: location?.latitude || 0,
-          longitude: location?.longitude || 0,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-      >
-        {location && (
-          <Marker
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }}
-            title="Your Location"
-            image={carIcon}
-          />
-        )}
-      </MapView>
-
-      <ActionSheet ref={actionSheetRef}>
-        {currentMessage ? (
-          <View style={styles.messageContainer}>
-            <Text style={styles.messageTitle}>New Request</Text>
-            <Text style={styles.messageText}>
-              {currentMessage.requestingUser.name} -{" "}
-              {currentMessage.destinationLocation}
-            </Text>
-            <Text style={styles.messageText}>
-              Distance: {currentMessage.distanceToPickUp.toFixed(2)} km
-            </Text>
-            <TouchableOpacity
-              style={styles.acceptButton}
-              onPress={() => handleAcceptRequest(currentMessage)}
-            >
-              <Text style={styles.buttonText}>Accept Request</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <StatusBar backgroundColor="#2c2c2e" barStyle="light-content" />
+        {/* Navbar */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => handleBackButton()}>
+              <Icon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
+            <Text style={styles.headerText}>DropDown</Text>
           </View>
-        ) : (
-          // Add button to accept it and add an action to that where i am sending current message to get processed
-          <Text style={styles.messageText}>No messages</Text>
-        )}
-      </ActionSheet>
-    </View>
+        </View>
+
+        {/* Map Section */}
+        <MapView
+          style={styles.map}
+          region={{
+            latitude: location?.latitude || 0,
+            longitude: location?.longitude || 0,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+        >
+          {location && (
+            <Marker
+              coordinate={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+              }}
+              title="Your Location"
+              image={carIcon}
+            />
+          )}
+        </MapView>
+
+        <ActionSheet ref={actionSheetRef}>
+          {currentMessage ? (
+            <View style={styles.messageContainer}>
+              <Text style={styles.messageTitle}>New Request</Text>
+              <Text style={styles.messageText}>
+                {currentMessage.requestingUser?.name || "Unknown"} -{" "}
+                {currentMessage.destinationLocation || "No destination"}
+              </Text>
+              <Text style={styles.messageText}>
+                Distance:{" "}
+                {currentMessage.distanceToPickUp?.toFixed(2) || "Unknown"} km
+              </Text>
+              <TouchableOpacity
+                style={styles.acceptButton}
+                onPress={() => handleAcceptRequest(currentMessage)}
+              >
+                <Text style={styles.buttonText}>Accept Request</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.messageText}>No messages</Text>
+          )}
+        </ActionSheet>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#2c2c2e", // Match the header background color
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    width: "100%",
+  },
   container: {
     flex: 1,
     backgroundColor: "#1c1c1e",
@@ -259,11 +327,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
+    marginLeft: 10,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: StatusBar.currentHeight, // Add this line
     padding: 20,
     backgroundColor: "#2c2c2e",
     borderBottomWidth: 1,
@@ -292,7 +362,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     marginTop: 10,
   },
-  acceptText: {
+  buttonText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
@@ -303,7 +373,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#1c1c1e",
   },
-  messageContainer: { padding: 20, alignItems: "center" },
-  messageTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  messageText: { fontSize: 16, color: "#000000" },
+  messageContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  messageTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  messageText: {
+    fontSize: 16,
+    color: "#000000",
+    marginBottom: 8,
+  },
 });
