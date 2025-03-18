@@ -41,6 +41,11 @@ export default function H3Map() {
   const locationSubscriptionRef = useRef(null);
   const cellAddressCheckerRef = useRef(null);
 
+  function closeConnection() {
+    stompClient.deactivate();
+    console.log("Socket Disconnected ");
+  }
+
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
@@ -296,8 +301,11 @@ export default function H3Map() {
   const handleChange = (value) => {
     setAddressInput(value);
   };
-
+  // logout
   const handleBackButton = () => {
+    closeConnection();
+    SecureStore.deleteItemAsync("token");
+    SecureStore.deleteItemAsync("email");
     router.push("/login");
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  Linking,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -34,6 +35,11 @@ export default function ServiceH3Map() {
 
   // Use ref to store location subscription for cleanup
   const locationSubscriptionRef = useRef(null);
+
+  function closeConnection() {
+    stompClient.deactivate();
+    console.log("Socket Disconnected ");
+  }
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -203,14 +209,24 @@ export default function ServiceH3Map() {
     }
   }, [stompClient, location, sendLocationUpdate]);
 
+  const handleCall = useCallback((phoneNumber) => {
+    Linking.openURL(`tel:${phoneNumber}`);
+  }, []);
+
   const handleAcceptRequest = (message) => {
     console.log("Processing request:", message);
+    const phone_no = message.requestingUser.phoneNo;
+    handleCall(phone_no);
     actionSheetRef.current?.hide();
+
     setCurrentMessage(null);
     // Add your logic to process the request
     // Example: Send the request to the backend or update state
   };
   const handleBackButton = () => {
+    closeConnection();
+    SecureStore.deleteItemAsync("token");
+    SecureStore.deleteItemAsync("email");
     router.push("/login");
   };
 
