@@ -23,8 +23,8 @@ import { Lock, Mail } from "lucide-react-native";
 import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("anubhavpandit.jain@gmail.com");
-  const [password, setPassword] = useState("Anubhav123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("User");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -35,9 +35,11 @@ export default function LoginForm() {
   const handleLogin = async () => {
     setLoading(true);
     try {
+      const formattedRole = role === "User" ? "User" : "ServiceProvider";
+
       const { data, status } = await axios.post(
         `http://${HOST}:${PORT}/auth/login`,
-        { email, password, role }
+        { email, password, role: formattedRole }
       );
       if (status === 200) {
         await saveData("token", data.response.token);
@@ -122,7 +124,10 @@ export default function LoginForm() {
                 <Text style={styles.pickerLabel}>Select Your Role</Text>
                 <Picker
                   selectedValue={role}
-                  onValueChange={setRole}
+                  onValueChange={(itemValue) => {
+                    console.log("Role changed to:", itemValue);
+                    setRole(itemValue);
+                  }}
                   style={styles.picker}
                   dropdownIconColor="#4ecdc4"
                 >

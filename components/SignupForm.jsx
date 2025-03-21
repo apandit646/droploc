@@ -26,13 +26,14 @@ import { HOST, PORT } from "./API";
 
 export default function SignupForm() {
   const router = useRouter();
+  const [role, setRole] = useState("User");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phoneNo: "",
     password: "",
     confirmPassword: "",
-    role: "User",
+    role: role,
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -51,12 +52,14 @@ export default function SignupForm() {
 
       const { name, email, phoneNo, password, role } = formData;
 
+      const formattedRole = role === "User" ? "User" : "ServiceProvider";
+
       const { data, status } = await axios.post(apiUrl, {
         name,
         email,
         phoneNo,
         password,
-        role,
+        role: formattedRole,
       });
 
       if (status === 200) {
@@ -193,7 +196,10 @@ export default function SignupForm() {
                       <Text style={styles.pickerLabel}>Select Your Role</Text>
                       <Picker
                         selectedValue={formData.role}
-                        onValueChange={(value) => handleChange("role", value)}
+                        onValueChange={(itemValue) => {
+                          console.log("Role changed to:", itemValue);
+                          setRole(itemValue);
+                        }}
                         style={styles.picker}
                         dropdownIconColor="#4ecdc4"
                       >

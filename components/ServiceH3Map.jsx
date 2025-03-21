@@ -298,9 +298,9 @@ export default function ServiceH3Map() {
           )}
         </ActionSheet>
       </View>
-      <View style={styles.footer}>
-        <Text style={styles.text}>© 2025 MyApp. All rights reserved.</Text>
-      </View>
+      {/* <View style={styles.footer}>
+        <Text style={styles.text}>© 2025 DropDown. All rights reserved.</Text>
+      </View> */}
     </SafeAreaView>
   );
 }
