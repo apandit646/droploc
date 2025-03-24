@@ -8,6 +8,9 @@ import {
   StatusBar,
   SafeAreaView,
   Linking,
+  Animated,
+  Dimensions,
+  Image,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -18,6 +21,8 @@ import { HOST, PORT } from "./API";
 import ActionSheet from "react-native-actions-sheet";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
+
+const { width } = Dimensions.get("window");
 
 export default function ServiceH3Map() {
   const router = useRouter();
@@ -30,8 +35,15 @@ export default function ServiceH3Map() {
   const [token, setToken] = useState(null);
   const [id, setId] = useState(null);
   const [currentMessage, setCurrentMessage] = useState(null);
+  const [isDisplayingMessage, setIsDisplayingMessage] = useState(false);
   const messageQueue = useRef([]);
   const actionSheetRef = useRef(null);
+
+  // Animation values
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const lottieRef = useRef(null);
 
   // Use ref to store location subscription for cleanup
   const locationSubscriptionRef = useRef(null);
@@ -159,21 +171,122 @@ export default function ServiceH3Map() {
       displayNextMessage();
     }
   };
-
   const displayNextMessage = () => {
-    if (messageQueue.current.length > 0) {
+    if (messageQueue.current.length > 0 && !isDisplayingMessage) {
       const nextMessage = messageQueue.current.shift();
       setCurrentMessage(nextMessage);
+      setIsDisplayingMessage(true); // Mark that a message is being displayed
+
+      // Show ActionSheet with animations
       actionSheetRef.current?.show();
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       setTimeout(() => {
-        actionSheetRef.current?.hide();
-        setCurrentMessage(null);
-        displayNextMessage();
+        hideCurrentMessage();
       }, 7000);
     }
   };
+  const hideCurrentMessage = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      actionSheetRef.current?.hide();
+      setCurrentMessage(null);
+      setIsDisplayingMessage(false);
+      displayNextMessage();
+    });
+  };
+
+  // const displayNextMessage = () => {
+  //   if (messageQueue.current.length > 0) {
+  //     const nextMessage = messageQueue.current.shift();
+  //     setCurrentMessage(nextMessage);
+  //     // Show ActionSheet with animations
+  //     actionSheetRef.current?.show();
+  //     // Play animations when showing
+  //     Animated.parallel([
+  //       Animated.timing(slideAnim, {
+  //         toValue: 1,
+  //         duration: 500,
+  //         useNativeDriver: true,
+  //       }),
+  //       Animated.timing(fadeAnim, {
+  //         toValue: 1,
+  //         duration: 600,
+  //         useNativeDriver: true,
+  //       }),
+  //       Animated.spring(scaleAnim, {
+  //         toValue: 1,
+  //         friction: 6,
+  //         useNativeDriver: true,
+  //       }),
+  //     ]).start();
+
+  //     // Play Lottie animation if available
+  //     if (lottieRef.current) {
+  //       lottieRef.current.play();
+  //     }
+
+  //     // Auto-hide after delay
+  //     setTimeout(() => {
+  //       // Reverse animations when hiding
+  //       Animated.parallel([
+  //         Animated.timing(slideAnim, {
+  //           toValue: 0,
+  //           duration: 300,
+  //           useNativeDriver: true,
+  //         }),
+  //         Animated.timing(fadeAnim, {
+  //           toValue: 0,
+  //           duration: 300,
+  //           useNativeDriver: true,
+  //         }),
+  //         Animated.timing(scaleAnim, {
+  //           toValue: 0.9,
+  //           duration: 300,
+  //           useNativeDriver: true,
+  //         }),
+  //       ]).start(() => {
+  //         actionSheetRef.current?.hide();
+  //         setCurrentMessage(null);
+  //         displayNextMessage();
+  //       });
+  //     }, 7000);
+  //   }
+  // };
 
   // Enhanced with useCallback for better performance
+
   const sendLocationUpdate = React.useCallback(() => {
     if (stompClient && stompClient.connected && location && token) {
       const message = {
@@ -217,12 +330,25 @@ export default function ServiceH3Map() {
     console.log("Processing request:", message);
     const phone_no = message.requestingUser.phoneNo;
     handleCall(phone_no);
-    actionSheetRef.current?.hide();
 
-    setCurrentMessage(null);
-    // Add your logic to process the request
-    // Example: Send the request to the backend or update state
+    // Hide with animations
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      actionSheetRef.current?.hide();
+      setCurrentMessage(null);
+    });
   };
+
   const handleBackButton = () => {
     closeConnection();
     SecureStore.deleteItemAsync("token");
@@ -274,33 +400,137 @@ export default function ServiceH3Map() {
           )}
         </MapView>
 
-        <ActionSheet ref={actionSheetRef}>
+        <ActionSheet
+          ref={actionSheetRef}
+          containerStyle={styles.actionSheetContainer}
+          gestureEnabled={true}
+          indicatorStyle={styles.actionSheetIndicator}
+        >
           {currentMessage ? (
-            <View style={styles.messageContainer}>
-              <Text style={styles.messageTitle}>New Request</Text>
-              <Text style={styles.messageText}>
-                {currentMessage.requestingUser?.name || "Unknown"} -{" "}
-                {currentMessage.destinationLocation || "No destination"}
-              </Text>
-              <Text style={styles.messageText}>
-                Distance:{" "}
-                {currentMessage.distanceToPickUp?.toFixed(2) || "Unknown"} km
-              </Text>
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={() => handleAcceptRequest(currentMessage)}
-              >
-                <Text style={styles.buttonText}>Accept Request</Text>
-              </TouchableOpacity>
-            </View>
+            <Animated.View
+              style={[
+                styles.messageContainer,
+                {
+                  opacity: fadeAnim,
+                  transform: [
+                    {
+                      translateY: slideAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [50, 0],
+                      }),
+                    },
+                    { scale: scaleAnim },
+                  ],
+                },
+              ]}
+            >
+              <View style={styles.notificationHeader}>
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={{
+                      uri:
+                        currentMessage.requestingUser?.avatar ||
+                        "https://via.placeholder.com/60",
+                    }}
+                    style={styles.avatar}
+                    defaultSource={require("../assets/images/human.png")}
+                  />
+                </View>
+                <View style={styles.headerTextContainer}>
+                  <Text style={styles.messageTitle}>New Ride Request</Text>
+                  <Text style={styles.timeAgo}>Just now</Text>
+                </View>
+              </View>
+
+              {/* We would need to import Lottie */}
+              {/* <LottieView
+                ref={lottieRef}
+                source={require('../assets/animations/notification.json')}
+                style={styles.lottieAnimation}
+                autoPlay={false}
+                loop={false}
+              /> */}
+
+              <View style={styles.divider} />
+
+              <View style={styles.detailsContainer}>
+                <Icon
+                  name="person"
+                  size={20}
+                  color="#4A6572"
+                  style={styles.detailIcon}
+                />
+                <Text style={styles.detailLabel}>Passenger:</Text>
+                <Text style={styles.detailValue}>
+                  {currentMessage.requestingUser?.name || "Unknown"}
+                </Text>
+              </View>
+
+              <View style={styles.detailsContainer}>
+                <Icon
+                  name="location-on"
+                  size={20}
+                  color="#4A6572"
+                  style={styles.detailIcon}
+                />
+                <Text style={styles.detailLabel}>Destination:</Text>
+                <Text style={styles.detailValue}>
+                  {currentMessage.destinationLocation || "No destination"}
+                </Text>
+              </View>
+
+              <View style={styles.detailsContainer}>
+                <Icon
+                  name="straighten"
+                  size={20}
+                  color="#4A6572"
+                  style={styles.detailIcon}
+                />
+                <Text style={styles.detailLabel}>Distance:</Text>
+                <Text style={styles.detailValue}>
+                  {currentMessage.distanceToPickUp?.toFixed(2) || "Unknown"} km
+                </Text>
+              </View>
+
+              <View style={styles.detailsContainer}>
+                <Icon
+                  name="attach-money"
+                  size={20}
+                  color="#4A6572"
+                  style={styles.detailIcon}
+                />
+                <Text style={styles.detailLabel}>Fare:</Text>
+                <Text style={styles.detailValue}>
+                  ${currentMessage.estimatedFare?.toFixed(2) || "TBD"}
+                </Text>
+              </View>
+
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.declineButton}
+                  onPress={() => {
+                    actionSheetRef.current?.hide();
+                    setCurrentMessage(null);
+                  }}
+                >
+                  <Icon name="close" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Decline</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptRequest(currentMessage)}
+                >
+                  <Icon name="check" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           ) : (
             <Text style={styles.messageText}>No messages</Text>
           )}
         </ActionSheet>
       </View>
-      {/* <View style={styles.footer}>
-        <Text style={styles.text}>© 2025 DropDown. All rights reserved.</Text>
-      </View> */}
     </SafeAreaView>
   );
 }
@@ -308,7 +538,7 @@ export default function ServiceH3Map() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#2c2c2e", // Match the header background color
+    backgroundColor: "#2c2c2e",
   },
   headerContent: {
     flexDirection: "row",
@@ -320,27 +550,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#1c1c1e",
   },
-  navbar: {
-    height: 60,
-    backgroundColor: "#2c2c2e",
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#444",
-  },
-  navTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
   map: {
     flex: 4,
     width: "100%",
-  },
-  bottomContainer: {
-    flex: 2,
-    backgroundColor: "#2c2c2e",
-    padding: 10,
   },
   headerText: {
     color: "#fff",
@@ -352,39 +564,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: StatusBar.currentHeight, // Add this line
+    paddingTop: StatusBar.currentHeight,
     padding: 20,
     backgroundColor: "#2c2c2e",
     borderBottomWidth: 1,
     borderBottomColor: "#444",
-  },
-  requestItem: {
-    backgroundColor: "#3a3a3c",
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 8,
-  },
-  requestText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  addressText: {
-    color: "#bbb",
-    fontSize: 14,
-  },
-  acceptButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    alignSelf: "flex-end",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
   },
   loader: {
     flex: 1,
@@ -392,30 +576,144 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#1c1c1e",
   },
+  // New or improved styles
+  actionSheetContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: "#f8f9fa",
+    paddingBottom: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  actionSheetIndicator: {
+    width: 60,
+    height: 6,
+    backgroundColor: "#d1d1d6",
+    borderRadius: 3,
+    marginTop: 8,
+  },
   messageContainer: {
     padding: 20,
+    width: "100%",
+  },
+  notificationHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    marginBottom: 20,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#e1e4e8",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   messageTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 10,
+    color: "#333",
+    marginBottom: 5,
+  },
+  timeAgo: {
+    fontSize: 14,
+    color: "#8e8e93",
+  },
+  lottieAnimation: {
+    width: 100,
+    height: 100,
+    alignSelf: "center",
+    marginVertical: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 15,
+    width: "100%",
+  },
+  detailsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  detailIcon: {
+    marginRight: 10,
+  },
+  detailLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#4A6572",
+    width: 90,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 25,
+  },
+  acceptButton: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    flex: 1,
+    marginLeft: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  declineButton: {
+    backgroundColor: "#ff3b30",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    flex: 1,
+    marginRight: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#ff3b30",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 5,
   },
   messageText: {
     fontSize: 16,
-    color: "#000000",
-    marginBottom: 8,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#333",
-    padding: 15,
-    alignItems: "center",
-  },
-  text: {
-    color: "#fff",
-    fontSize: 14,
+    color: "#8e8e93",
+    textAlign: "center",
+    padding: 30,
   },
 });
