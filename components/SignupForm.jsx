@@ -67,7 +67,6 @@ export default function SignupForm() {
         await saveData("refreshToken", data.response.refreshToken);
         await saveData("email", email);
         await saveData("id", data.response.id);
-        Alert.alert("🎉 Success", "Signup successful!");
         if (role === "User") {
           router.push("/map");
         } else if (role === "ServiceProvider") {

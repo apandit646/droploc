@@ -21,6 +21,7 @@ import { HOST, PORT } from "./API";
 import ActionSheet from "react-native-actions-sheet";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
+const carIcon = require("../assets/images/car_texi.png");
 
 const { width } = Dimensions.get("window");
 
@@ -30,14 +31,14 @@ export default function ServiceH3Map() {
   const [loading, setLoading] = useState(true);
   const [stompClient, setStompClient] = useState(null);
   const [requests, setRequests] = useState([]);
-  const carIcon = require("../assets/images/car_texi.png");
   const [email, setEmail] = useState(null);
   const [token, setToken] = useState(null);
   const [id, setId] = useState(null);
   const [currentMessage, setCurrentMessage] = useState(null);
-  const [isDisplayingMessage, setIsDisplayingMessage] = useState(false);
-  const messageQueue = useRef([]);
+  const [messageQueue, setMessgeQueue] = useState([]);
   const actionSheetRef = useRef(null);
+
+  const [notif_subscription, set_notif_subscription] = useState();
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -47,11 +48,6 @@ export default function ServiceH3Map() {
 
   // Use ref to store location subscription for cleanup
   const locationSubscriptionRef = useRef(null);
-
-  function closeConnection() {
-    stompClient.deactivate();
-    console.log("Socket Disconnected ");
-  }
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -133,7 +129,7 @@ export default function ServiceH3Map() {
   }, []);
 
   useEffect(() => {
-    if (!email || !token || !id) return;
+    if (!token || !id) return;
 
     const socket = new SockJS(`http://${HOST}:${PORT}/ws-location`);
     const client = new Client({
@@ -143,12 +139,16 @@ export default function ServiceH3Map() {
         console.log("✅ WebSocket Connected");
         setStompClient(client);
 
-        const destination = `/notification/${id}`;
-        const subscription = client.subscribe(destination, (message) => {
-          const newMessage = JSON.parse(message.body);
-          console.log(`📬 Notification from ${destination}:`, newMessage);
-          enqueueMessage(newMessage);
-        });
+        if (!notif_subscription) {
+          set_notif_subscription(
+            client.subscribe(`/notification/${id}`, (message) => {
+              const newMessage = JSON.parse(message.body);
+              // alert(currentMessage);
+              enqueueMessage(newMessage);
+            })
+          );
+        }
+
         client.subscription = subscription;
       },
       onDisconnect: () => console.log("❌ WebSocket Disconnected"),
@@ -157,26 +157,25 @@ export default function ServiceH3Map() {
     client.activate();
 
     return () => {
-      if (client && client.subscription) {
-        client.subscription.unsubscribe();
-        console.log("🔄 Unsubscribed from notifications");
+      if (notif_subscription) {
+        notif_subscription.unsubscribe();
       }
       client.deactivate();
     };
-  }, [email, token, id]);
+  }, [token, id]);
 
   const enqueueMessage = (message) => {
-    messageQueue.current.push(message);
+    messageQueue.push(message);
     if (!currentMessage) {
-      displayNextMessage();
+      setCurrentMessage(message);
+      RedrawActionSheet();
     }
   };
-  const displayNextMessage = () => {
-    if (messageQueue.current.length > 0 && !isDisplayingMessage) {
-      const nextMessage = messageQueue.current.shift();
-      setCurrentMessage(nextMessage);
-      setIsDisplayingMessage(true); // Mark that a message is being displayed
 
+  const RedrawActionSheet = () => {
+    actionSheetRef.current?.hide();
+
+    setTimeout(() => {
       // Show ActionSheet with animations
       actionSheetRef.current?.show();
       Animated.parallel([
@@ -196,11 +195,10 @@ export default function ServiceH3Map() {
           useNativeDriver: true,
         }),
       ]).start();
-
-      setTimeout(() => {
-        hideCurrentMessage();
-      }, 7000);
-    }
+    }, 500);
+    setTimeout(() => {
+      hideCurrentMessage();
+    }, 7000);
   };
   const hideCurrentMessage = () => {
     Animated.parallel([
@@ -221,69 +219,23 @@ export default function ServiceH3Map() {
       }),
     ]).start(() => {
       actionSheetRef.current?.hide();
-      setCurrentMessage(null);
-      setIsDisplayingMessage(false);
-      displayNextMessage();
     });
   };
 
-  // const displayNextMessage = () => {
-  //   if (messageQueue.current.length > 0) {
-  //     const nextMessage = messageQueue.current.shift();
-  //     setCurrentMessage(nextMessage);
-  //     // Show ActionSheet with animations
-  //     actionSheetRef.current?.show();
-  //     // Play animations when showing
-  //     Animated.parallel([
-  //       Animated.timing(slideAnim, {
-  //         toValue: 1,
-  //         duration: 500,
-  //         useNativeDriver: true,
-  //       }),
-  //       Animated.timing(fadeAnim, {
-  //         toValue: 1,
-  //         duration: 600,
-  //         useNativeDriver: true,
-  //       }),
-  //       Animated.spring(scaleAnim, {
-  //         toValue: 1,
-  //         friction: 6,
-  //         useNativeDriver: true,
-  //       }),
-  //     ]).start();
-
-  //     // Play Lottie animation if available
-  //     if (lottieRef.current) {
-  //       lottieRef.current.play();
-  //     }
-
-  //     // Auto-hide after delay
-  //     setTimeout(() => {
-  //       // Reverse animations when hiding
-  //       Animated.parallel([
-  //         Animated.timing(slideAnim, {
-  //           toValue: 0,
-  //           duration: 300,
-  //           useNativeDriver: true,
-  //         }),
-  //         Animated.timing(fadeAnim, {
-  //           toValue: 0,
-  //           duration: 300,
-  //           useNativeDriver: true,
-  //         }),
-  //         Animated.timing(scaleAnim, {
-  //           toValue: 0.9,
-  //           duration: 300,
-  //           useNativeDriver: true,
-  //         }),
-  //       ]).start(() => {
-  //         actionSheetRef.current?.hide();
-  //         setCurrentMessage(null);
-  //         displayNextMessage();
-  //       });
-  //     }, 7000);
-  //   }
-  // };
+  const processRequestQueue = () => {
+    if (messageQueue.length > 1) {
+      setCurrentMessage({ ...messageQueue[1] });
+      setMessgeQueue((q) => {
+        const s = [...q];
+        s.shift();
+        return s;
+      });
+      RedrawActionSheet();
+    } else {
+      hideCurrentMessage();
+      // setCurrentMessage(null);
+    }
+  };
 
   // Enhanced with useCallback for better performance
 
@@ -345,8 +297,14 @@ export default function ServiceH3Map() {
       }),
     ]).start(() => {
       actionSheetRef.current?.hide();
-      setCurrentMessage(null);
+      // setCurrentMessage(null);
     });
+  };
+
+  const declineCurrentRequest = () => {
+    // setCurrentMessage(null);
+    processRequestQueue();
+    // displayNextMessage();
   };
 
   const handleBackButton = () => {
@@ -355,6 +313,11 @@ export default function ServiceH3Map() {
     SecureStore.deleteItemAsync("email");
     router.push("/login");
   };
+
+  function closeConnection() {
+    stompClient.deactivate();
+    console.log("Socket Disconnected ");
+  }
 
   if (loading) {
     return (
@@ -509,8 +472,7 @@ export default function ServiceH3Map() {
                 <TouchableOpacity
                   style={styles.declineButton}
                   onPress={() => {
-                    actionSheetRef.current?.hide();
-                    setCurrentMessage(null);
+                    declineCurrentRequest();
                   }}
                 >
                   <Icon name="close" size={20} color="#fff" />

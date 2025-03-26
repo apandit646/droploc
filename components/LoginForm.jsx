@@ -23,9 +23,9 @@ import { Lock, Mail } from "lucide-react-native";
 import { HOST, PORT } from "./API";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("User");
+  const [email, setEmail] = useState("boss@gmail.com");
+  const [password, setPassword] = useState("12345678");
+  const [role, setRole] = useState("ServiceProvider");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 

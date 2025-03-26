@@ -288,7 +288,6 @@ export default function H3Map() {
         }
       );
       console.log("✅ Ride request sent successfully:", response.data);
-      alert("Ride request sent successfully!");
     } catch (error) {
       console.error(
         "❌ Error sending ride request:",
