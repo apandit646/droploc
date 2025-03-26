@@ -11,6 +11,9 @@ import {
   TextInput,
   StatusBar,
   SafeAreaView,
+  Modal,
+  Animated,
+  Dimensions,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as SecureStore from "expo-secure-store";
@@ -22,6 +25,7 @@ import axios from "axios";
 import { CountdownCircleTimer } from "react-native-countdown-circle-timer";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function H3Map() {
   const carIcon = require("../assets/images/car_texi.png");
@@ -36,7 +40,16 @@ export default function H3Map() {
   const [loading, setLoading] = useState(true);
   const [addressInput, setAddressInput] = useState("");
   const [statuses, setStatues] = useState({});
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [userProfile, setUserProfile] = useState({
+    name: "User Name",
+    email: "user@example.com",
+  });
   const router = useRouter();
+
+  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const windowHeight = Dimensions.get("window").height;
+
   // Use refs to store subscriptions for cleanup
   const locationSubscriptionRef = useRef(null);
   const cellAddressCheckerRef = useRef(null);
@@ -45,6 +58,22 @@ export default function H3Map() {
     stompClient.deactivate();
     console.log("Socket Disconnected ");
   }
+
+  useEffect(() => {
+    if (showDropdown) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -300,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showDropdown]);
 
   useEffect(() => {
     const fetchAuthData = async () => {
@@ -57,6 +86,7 @@ export default function H3Map() {
         }
         setToken(storedToken);
         setEmail(storedEmail);
+        setUserProfile((prev) => ({ ...prev, email: storedEmail }));
       } catch (error) {
         console.error("❌ Error fetching auth data:", error);
       }
@@ -83,8 +113,8 @@ export default function H3Map() {
         const subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 5, // Update if device moves by 5 meters
-            timeInterval: 3000, // Update every 3 seconds
+            distanceInterval: 5,
+            timeInterval: 3000,
           },
           (newLocation) => {
             console.log("📍 Location updated:", newLocation.coords);
@@ -92,13 +122,10 @@ export default function H3Map() {
               latitude: newLocation.coords.latitude,
               longitude: newLocation.coords.longitude,
             });
-
-            // Set loading to false once we have the initial location
             setLoading(false);
           }
         );
 
-        // Store the subscription in the ref for cleanup
         locationSubscriptionRef.current = subscription;
       } catch (error) {
         console.error("❌ Error setting up location tracking:", error);
@@ -109,7 +136,6 @@ export default function H3Map() {
     fetchAuthData();
     setupLocationTracking();
 
-    // Clean up function for location subscription
     return () => {
       if (locationSubscriptionRef.current) {
         locationSubscriptionRef.current.remove();
@@ -300,7 +326,7 @@ export default function H3Map() {
   const handleChange = (value) => {
     setAddressInput(value);
   };
-  // logout
+
   const handleBackButton = () => {
     closeConnection();
     SecureStore.deleteItemAsync("token");
@@ -308,11 +334,26 @@ export default function H3Map() {
     router.push("/login");
   };
 
+  const toggleDropdown = () => {
+    setShowDropdown(!showDropdown);
+  };
+
+  const handleProfileAction = (action) => {
+    setShowDropdown(false);
+    if (action === "logout") {
+      handleBackButton();
+    } else if (action === "settings") {
+      // Navigate to settings
+      console.log("Settings clicked");
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
+      <LinearGradient colors={["#121212", "#1E1E1E"]} style={styles.loader}>
+        <ActivityIndicator size="large" color="#4ECDC4" />
+        <Text style={styles.loadingText}>Finding your location...</Text>
+      </LinearGradient>
     );
   }
 
@@ -323,22 +364,37 @@ export default function H3Map() {
         backgroundColor="transparent"
         translucent={true}
       />
-      <View style={styles.container}>
+      <LinearGradient colors={["#121212", "#1E1E1E"]} style={styles.container}>
         {/* Navbar */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => handleBackButton()}>
-              <Icon name="arrow-back" size={24} color="#fff" />
+            <TouchableOpacity
+              onPress={toggleDropdown}
+              style={styles.profileButton}
+            >
+              <Icon name="account-circle" size={28} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerText}>DropDown</Text>
+            <TouchableOpacity onPress={() => handleBackButton()}>
+              <Icon name="notifications" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-          <TextInput
-            placeholder="Enter Address"
-            value={addressInput}
-            onChangeText={handleChange}
-            style={styles.inputAddress}
-            placeholderTextColor="#6ecff2"
-          />
+
+          <View style={styles.searchContainer}>
+            <Icon
+              name="search"
+              size={20}
+              color="#6ecff2"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              placeholder="Where to?"
+              value={addressInput}
+              onChangeText={handleChange}
+              style={styles.inputAddress}
+              placeholderTextColor="#6ecff2"
+            />
+          </View>
         </View>
 
         <MapView
@@ -349,6 +405,7 @@ export default function H3Map() {
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           }}
+          customMapStyle={mapStyle}
         >
           {location && (
             <Marker
@@ -372,7 +429,9 @@ export default function H3Map() {
             );
           })}
         </MapView>
-        <View style={{ flex: 1.5 }}>
+
+        <View style={styles.driversContainer}>
+          <Text style={styles.driversTitle}>Available Drivers</Text>
           <FlatList
             data={providerLoc.map((provider) => ({
               ...provider,
@@ -386,152 +445,433 @@ export default function H3Map() {
                 : "Calculating...",
             }))}
             keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
+            horizontal
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
-              <View style={styles.item}>
-                <View style={styles.diaplaycard}>
+              <LinearGradient
+                colors={["#2A2A2A", "#1E1E1E"]}
+                style={styles.item}
+              >
+                <View style={styles.driverInfo}>
                   <Image
                     source={require("../assets/images/logo.png")}
                     style={styles.logo}
                   />
-                  <Text style={styles.text}>{item.name}</Text>
+                  <Text style={styles.driverName}>{item.name}</Text>
+                  <Text style={styles.distanceText}>
+                    📍 {item.distance} km away
+                  </Text>
                 </View>
-                <View style={styles.diaplaycard}>
-                  <Text style={styles.distanceText}>📍 {item.distance} km</Text>
+
+                <View style={styles.actionContainer}>
                   {statuses[item.id] != "in-progress" && (
                     <TouchableOpacity
-                      style={styles.callButton}
+                      style={styles.requestButton}
                       onPress={() => sendRideRequest(item.id)}
                     >
-                      <Text style={styles.callText}>Request</Text>
+                      <Text style={styles.requestText}>Request</Text>
                     </TouchableOpacity>
                   )}
                   {statuses[item.id] == "in-progress" && (
-                    <CountdownCircleTimer
-                      isPlaying={true}
-                      duration={30}
-                      colors={"#4ECDC4"}
-                      updateInterval={1}
-                      size={30}
-                      strokeWidth={3}
-                      onComplete={() => {
-                        setStatues((d) => {
-                          const r = { ...d };
-                          r[item.id] = "";
-                          return r;
-                        });
-                        // if we decide to perform some task call method here
-                        return { shouldRepeat: false, delay: 2 };
-                      }}
-                    >
-                      {({ remainingTime, color }) => (
-                        <Text style={{ color, fontSize: 10 }}>
-                          {remainingTime}
-                        </Text>
-                      )}
-                    </CountdownCircleTimer>
+                    <View style={styles.timerContainer}>
+                      <CountdownCircleTimer
+                        isPlaying={true}
+                        duration={10}
+                        colors={"#4ECDC4"}
+                        updateInterval={1}
+                        size={40}
+                        strokeWidth={4}
+                        onComplete={() => {
+                          setStatues((d) => {
+                            const r = { ...d };
+                            r[item.id] = "";
+                            return r;
+                          });
+                          // if we decide to perform some task call method here
+                          return { shouldRepeat: false, delay: 2 };
+                        }}
+                      >
+                        {({ remainingTime, color }) => (
+                          <Text style={{ color, fontSize: 12 }}>
+                            {remainingTime}
+                          </Text>
+                        )}
+                      </CountdownCircleTimer>
+                      <Text style={styles.timerText}>Waiting...</Text>
+                    </View>
                   )}
                 </View>
-              </View>
+              </LinearGradient>
             )}
           />
         </View>
-      </View>
+
+        {/* Profile Dropdown */}
+        <Modal
+          transparent={true}
+          visible={showDropdown}
+          onRequestClose={() => setShowDropdown(false)}
+        >
+          <TouchableOpacity
+            style={styles.dropdownOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDropdown(false)}
+          >
+            <Animated.View
+              style={[
+                styles.dropdownContainer,
+                { transform: [{ translateX: slideAnim }] },
+              ]}
+            >
+              <View style={styles.profileHeader}>
+                <Icon name="account-circle" size={60} color="#4ECDC4" />
+                <Text style={styles.profileName}>{userProfile.name}</Text>
+                <Text style={styles.profileEmail}>{userProfile.email}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                // onPress={() => {
+                //   toggleSideMenu();
+                //   router.push("/profile");
+                // }}
+              >
+                <Icon name="person" size={24} color="white" />
+                <Text style={styles.dropdownItemText}>My Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleProfileAction("settings")}
+              >
+                <Icon name="settings" size={24} color="#fff" />
+                <Text style={styles.dropdownItemText}>Settings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                // onPress={() => {
+                //   toggleSideMenu();
+                //   router.push("/support");
+                // }}
+              >
+                <Icon name="help" size={24} color="white" />
+                <Text style={styles.dropdownItemText}>Help & Support</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                // onPress={() => {
+                //   toggleSideMenu();
+                //   router.push("/history");
+                // }}
+              >
+                <Icon name="history" size={24} color="white" />
+                <Text style={styles.dropdownItemText}>Ride History</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleProfileAction("logout")}
+              >
+                <Icon name="logout" size={24} color="#fff" />
+                <Text style={styles.dropdownItemText}>Logout</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Modal>
+      </LinearGradient>
     </>
   );
 }
 
+const mapStyle = [
+  {
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#212121",
+      },
+    ],
+  },
+  {
+    elementType: "labels.icon",
+    stylers: [
+      {
+        visibility: "off",
+      },
+    ],
+  },
+  {
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#757575",
+      },
+    ],
+  },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [
+      {
+        color: "#212121",
+      },
+    ],
+  },
+  {
+    featureType: "administrative",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#757575",
+      },
+    ],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#757575",
+      },
+    ],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.fill",
+    stylers: [
+      {
+        color: "#2c2c2c",
+      },
+    ],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#8a8a8a",
+      },
+    ],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#373737",
+      },
+    ],
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#373737",
+      },
+    ],
+  },
+  {
+    featureType: "road.local",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#373737",
+      },
+    ],
+  },
+  {
+    featureType: "transit",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#757575",
+      },
+    ],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#000000",
+      },
+    ],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#3d3d3d",
+      },
+    ],
+  },
+];
+
 const styles = StyleSheet.create({
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    width: "100%",
-  },
-  diaplaycard: {
-    flexDirection: "column",
-    margin: 20,
-    alignSelf: "center",
-  },
-  inputAddress: {
-    width: "90%",
-    backgroundColor: "#333",
-    color: "#fff",
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10, // Ensures it's below the "DropDown" text
-    borderWidth: 1,
-    borderColor: "rgba(78,205,196,0.3)",
-    alignSelf: "center",
-  },
   container: {
     flex: 1,
-    backgroundColor: "#1c1c1e",
-  },
-  header: {
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: StatusBar.currentHeight, // Add this line
-    padding: 20,
-    backgroundColor: "#2c2c2e",
-    borderBottomWidth: 1,
-    borderBottomColor: "#444",
-  },
-  logo: {
-    width: 50,
-    height: 50,
-    alignSelf: "center",
-  },
-  headerText: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
-  map: {
-    width: "100%",
-    height: "60%",
-  },
-  listContainer: {
-    padding: 10,
-  },
-  item: {
-    flex: 1,
-    margin: 5,
-    backgroundColor: "#2c2c2e",
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    flexDirection: "row",
-  },
-  text: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  distanceText: {
-    color: "#bbb",
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  callButton: {
-    backgroundColor: "#4a90e2",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-  },
-  callText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
   },
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1c1c1e",
+  },
+  loadingText: {
+    color: "#fff",
+    marginTop: 20,
+    fontSize: 16,
+  },
+  header: {
+    paddingTop: StatusBar.currentHeight + 10,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    backgroundColor: "transparent",
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+  headerText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  profileButton: {
+    padding: 5,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2A2A2A",
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  inputAddress: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+  },
+  map: {
+    width: "100%",
+    height: "55%",
+  },
+  driversContainer: {
+    padding: 15,
+    backgroundColor: "transparent",
+  },
+  driversTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+  listContainer: {
+    paddingBottom: 10,
+  },
+  item: {
+    width: 180,
+    borderRadius: 15,
+    padding: 15,
+    marginRight: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  driverInfo: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 10,
+  },
+  driverName: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  distanceText: {
+    color: "#bbb",
+    fontSize: 12,
+  },
+  actionContainer: {
+    alignItems: "center",
+  },
+  requestButton: {
+    backgroundColor: "#4ECDC4",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    width: "100%",
+    alignItems: "center",
+  },
+  requestText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  timerContainer: {
+    alignItems: "center",
+  },
+  timerText: {
+    color: "#fff",
+    fontSize: 10,
+    marginTop: 5,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-start",
+  },
+  dropdownContainer: {
+    width: "70%",
+    height: "100%",
+    backgroundColor: "#1E1E1E",
+    paddingTop: 50,
+  },
+  profileHeader: {
+    alignItems: "center",
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  profileName: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 10,
+  },
+  profileEmail: {
+    color: "#bbb",
+    fontSize: 14,
+    marginTop: 5,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  dropdownItemText: {
+    color: "#fff",
+    fontSize: 16,
+    marginLeft: 15,
   },
 });
