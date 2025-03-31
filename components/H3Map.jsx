@@ -103,7 +103,7 @@ export default function H3Map() {
 
         // Get initial location
         const currentLocation = await Location.getCurrentPositionAsync({});
-        console.log("Setting initial location:", currentLocation);
+        // console.log("Setting initial location:", currentLocation);
         setLocation({
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude,
@@ -117,7 +117,7 @@ export default function H3Map() {
             timeInterval: 3000,
           },
           (newLocation) => {
-            console.log("📍 Location updated:", newLocation.coords);
+            // console.log("📍 Location updated:", newLocation.coords);
             setLocation({
               latitude: newLocation.coords.latitude,
               longitude: newLocation.coords.longitude,
@@ -151,9 +151,9 @@ export default function H3Map() {
     const socket = new SockJS(`http://${HOST}:${PORT}/ws-location`);
     const client = new Client({
       webSocketFactory: () => socket,
-      debug: (str) => console.log("WebSocket Debug:", str),
+      // debug: (str) => console.log("WebSocket Debug:", str),
       onConnect: () => {
-        console.log("✅ WebSocket Connected");
+        // console.log("✅ WebSocket Connected");
         setStompClient(client);
       },
       onDisconnect: () => console.log("❌ WebSocket Disconnected"),
@@ -171,7 +171,7 @@ export default function H3Map() {
   // Fetch cell address when location changes
   useEffect(() => {
     if (location && token) {
-      console.log("⏳ Fetching cell address for location:", location);
+      // console.log("⏳ Fetching cell address for location:", location);
       axios
         .get(
           `http://${HOST}:${PORT}/api/v1/util?lat=${location.latitude}&lon=${location.longitude}`,
@@ -182,14 +182,14 @@ export default function H3Map() {
           }
         )
         .then((response) => {
-          console.log("✅ Cell address response:", response.data);
+          // console.log("✅ Cell address response:", response.data);
           if (response.data !== cellAddress) {
-            console.log(
-              "🔄 Cell address changed from",
-              cellAddress,
-              "to",
-              response.data
-            );
+            // console.log(
+            //   "🔄 Cell address changed from",
+            //   cellAddress,
+            //   "to",
+            //   response.data
+            // );
             setCellAddress(response.data);
           }
         })
@@ -202,15 +202,15 @@ export default function H3Map() {
   // Subscribe to WebSocket updates for the current cell
   useEffect(() => {
     if (stompClient && stompClient.connected && cellAddress) {
-      console.log(`🔗 Subscribing to WebSocket /location/${cellAddress}`);
+      // console.log(`🔗 Subscribing to WebSocket /location/${cellAddress}`);
 
       // Unsubscribe from previous subscription if exists
       const subscriptions = stompClient.subscriptions || {};
       Object.keys(subscriptions).forEach((subId) => {
         if (subscriptions[subId].destination.includes("/location/")) {
-          console.log(
-            `🔄 Unsubscribing from previous location channel: ${subscriptions[subId].destination}`
-          );
+          // console.log(
+          //   `🔄 Unsubscribing from previous location channel: ${subscriptions[subId].destination}`
+          // );
           subscriptions[subId].unsubscribe();
         }
       });
@@ -220,17 +220,17 @@ export default function H3Map() {
         `/location/${cellAddress}`,
         (message) => {
           const newMessage = JSON.parse(message.body);
-          console.log(
-            `📍 Update /location/${cellAddress}:`,
-            newMessage.response
-          );
+          // console.log(
+          //   `📍 Update /location/${cellAddress}:`,
+          //   newMessage.response
+          // );
           setProviderLoc(() => [...newMessage.response]);
         }
       );
 
       return () => {
         subscription.unsubscribe();
-        console.log(`🚫 Unsubscribed from /location/${cellAddress}`);
+        // console.log(`🚫 Unsubscribed from /location/${cellAddress}`);
       };
     }
   }, [stompClient, cellAddress]);
@@ -249,11 +249,11 @@ export default function H3Map() {
         destination: "/app/update-location",
         body: JSON.stringify(message),
       });
-      console.log("📤 Sent location update:", message);
+      // console.log("📤 Sent location update:", message);
     } else {
-      console.log(
-        "⚠️ Cannot send location update: WebSocket not connected or missing data"
-      );
+      // console.log(
+      //   "⚠️ Cannot send location update: WebSocket not connected or missing data"
+      // );
     }
   }, [stompClient, location, token]);
 
@@ -313,7 +313,7 @@ export default function H3Map() {
           },
         }
       );
-      console.log("✅ Ride request sent successfully:", response.data);
+      // console.log("✅ Ride request sent successfully:", response.data);
     } catch (error) {
       console.error(
         "❌ Error sending ride request:",
@@ -344,7 +344,7 @@ export default function H3Map() {
       handleBackButton();
     } else if (action === "settings") {
       // Navigate to settings
-      console.log("Settings clicked");
+      // console.log("Settings clicked");
     }
   };
 

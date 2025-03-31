@@ -93,10 +93,7 @@ export default function SignupForm() {
         backgroundColor="transparent"
         translucent={true}
       />
-      <LinearGradient
-        colors={["#0F2027", "#203A43", "#2C5364"]}
-        style={styles.background}
-      >
+      <LinearGradient colors={["#333", "#1E1E1E"]} style={styles.background}>
         <SafeAreaView style={styles.safeArea}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView
@@ -122,18 +119,18 @@ export default function SignupForm() {
                   {/* Input Fields with Icons */}
                   <View style={styles.inputGroup}>
                     <View style={styles.iconInputContainer}>
-                      <User color="#4ecdc4" size={24} style={styles.icon} />
+                      <User color="#888" size={24} style={styles.icon} />
                       <TextInput
                         placeholder="Full Name"
                         value={formData.name}
                         onChangeText={(value) => handleChange("name", value)}
                         style={styles.input}
-                        placeholderTextColor="#6ecff2"
+                        placeholderTextColor="#666"
                       />
                     </View>
 
                     <View style={styles.iconInputContainer}>
-                      <Mail color="#4ecdc4" size={24} style={styles.icon} />
+                      <Mail color="#888" size={24} style={styles.icon} />
                       <TextInput
                         placeholder="Email"
                         value={formData.email}
@@ -141,16 +138,12 @@ export default function SignupForm() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         style={styles.input}
-                        placeholderTextColor="#6ecff2"
+                        placeholderTextColor="#666"
                       />
                     </View>
 
                     <View style={styles.iconInputContainer}>
-                      <PhoneCall
-                        color="#4ecdc4"
-                        size={24}
-                        style={styles.icon}
-                      />
+                      <PhoneCall color="#888" size={24} style={styles.icon} />
                       <TextInput
                         placeholder="Phone Number"
                         value={formData.phoneNo}
@@ -158,12 +151,12 @@ export default function SignupForm() {
                         keyboardType="phone-pad"
                         maxLength={10}
                         style={styles.input}
-                        placeholderTextColor="#6ecff2"
+                        placeholderTextColor="#666"
                       />
                     </View>
 
                     <View style={styles.iconInputContainer}>
-                      <Lock color="#4ecdc4" size={24} style={styles.icon} />
+                      <Lock color="#888" size={24} style={styles.icon} />
                       <TextInput
                         placeholder="Password"
                         value={formData.password}
@@ -172,12 +165,12 @@ export default function SignupForm() {
                         }
                         secureTextEntry
                         style={styles.input}
-                        placeholderTextColor="#6ecff2"
+                        placeholderTextColor="#666"
                       />
                     </View>
 
                     <View style={styles.iconInputContainer}>
-                      <Check color="#4ecdc4" size={24} style={styles.icon} />
+                      <Check color="#888" size={24} style={styles.icon} />
                       <TextInput
                         placeholder="Confirm Password"
                         value={formData.confirmPassword}
@@ -186,7 +179,7 @@ export default function SignupForm() {
                         }
                         secureTextEntry
                         style={styles.input}
-                        placeholderTextColor="#6ecff2"
+                        placeholderTextColor="#666"
                       />
                     </View>
 
@@ -200,13 +193,13 @@ export default function SignupForm() {
                           setRole(itemValue);
                         }}
                         style={styles.picker}
-                        dropdownIconColor="#4ecdc4"
+                        dropdownIconColor="#888"
                       >
-                        <Picker.Item label="User" value="User" color="black" />
+                        <Picker.Item label="User" value="User" color="#fff" />
                         <Picker.Item
                           label="Driver"
                           value="ServiceProvider"
-                          color="black"
+                          color="#fff"
                         />
                       </Picker>
                     </View>
@@ -220,7 +213,7 @@ export default function SignupForm() {
                     disabled={isLoading}
                   >
                     {isLoading ? (
-                      <ActivityIndicator color="#0F2027" size="large" />
+                      <ActivityIndicator color="#fff" size="large" />
                     ) : (
                       <Text style={styles.signupButtonText}>Sign Up</Text>
                     )}
@@ -265,12 +258,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   formContainer: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 20,
     padding: 20,
     margin: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   titleContainer: {
     alignItems: "center",
@@ -279,13 +272,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#4ecdc4",
+    color: "#888",
     textAlign: "center",
   },
   subtitleUnderline: {
     height: 2,
     width: 100,
-    backgroundColor: "#4ecdc4",
+    backgroundColor: "#888",
     marginTop: 5,
   },
   inputGroup: {
@@ -294,11 +287,11 @@ const styles = StyleSheet.create({
   iconInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "rgba(78,205,196,0.3)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   icon: {
     marginLeft: 10,
@@ -306,33 +299,33 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: "#6ecff2",
+    color: "#fff",
     padding: 10,
   },
   pickerContainer: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(78,205,196,0.3)",
+    borderColor: "rgba(255,255,255,0.1)",
     marginBottom: 10,
   },
   pickerLabel: {
-    color: "#4ecdc4",
+    color: "#888",
     textAlign: "center",
     padding: 10,
   },
   picker: {
-    color: "#6ecff2",
+    color: "#fff",
   },
   signupButton: {
-    backgroundColor: "#4ecdc4",
+    backgroundColor: "#888",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginBottom: 10,
   },
   signupButtonText: {
-    color: "#0F2027",
+    color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -340,11 +333,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loginLinkText: {
-    color: "#6ecff2",
+    color: "#aaa",
   },
   loginTextBold: {
     fontWeight: "bold",
-    color: "#4ecdc4",
+    color: "#888",
   },
   logo: {
     width: "50%",

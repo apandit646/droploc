@@ -37,12 +37,17 @@ export default function ServiceH3Map() {
   const [email, setEmail] = useState(null);
   const [token, setToken] = useState(null);
   const [id, setId] = useState(null);
+  const [showSideMenu, setShowSideMenu] = useState(false);
+
   const [currentMessage, setCurrentMessage] = useState(null);
   const [messageQueue, setMessgeQueue] = useState([]);
-  const [showSideMenu, setShowSideMenu] = useState(false);
   const actionSheetRef = useRef(null);
+  const stateRef = useRef(currentMessage);
 
   const [notif_subscription, set_notif_subscription] = useState();
+
+  const [socket] = useState(new SockJS(`http://${HOST}:${PORT}/ws-location`));
+  const [client, setClient] = useState(null);
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +59,50 @@ export default function ServiceH3Map() {
 
   // Use ref to store location subscription for cleanup
   const locationSubscriptionRef = useRef(null);
+
+  // stateRef.current = currentMessage;
+
+  useEffect(() => {
+    stateRef.current = currentMessage; // Update ref whenever messages change
+  }, [currentMessage]);
+
+  useEffect(() => {
+    if (!socket || !token || !id) return;
+
+    const cb = (message) => {
+      const newMessage = JSON.parse(message.body);
+      enqueueMessage(newMessage);
+    };
+
+    if (socket) {
+      const client = new Client({
+        webSocketFactory: () => socket,
+        debug: (str) => console.log("WebSocket Debug:", str),
+        onConnect: function () {
+          console.log("✅ WebSocket Connected");
+          setStompClient(client);
+
+          if (!notif_subscription) {
+            set_notif_subscription(
+              client.subscribe(`/notification/${id}`, (m) => cb(m))
+            );
+          }
+          client.subscription = subscription;
+        },
+        onDisconnect: () => console.log("❌ WebSocket Disconnected"),
+        onStompError: (frame) => console.error("❗ STOMP Error:", frame),
+      });
+      client.activate();
+      setClient(client);
+    }
+
+    return () => {
+      if (notif_subscription) {
+        notif_subscription.unsubscribe();
+      }
+      client?.deactivate();
+    };
+  }, [socket, token, id]);
 
   // Start pulse animation
   useEffect(() => {
@@ -108,7 +157,7 @@ export default function ServiceH3Map() {
       }
     };
 
-    // Setup real-time location tracking
+    // Setup real-time location
     const setupLocationTracking = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -169,51 +218,19 @@ export default function ServiceH3Map() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!token || !id) return;
-
-    const socket = new SockJS(`http://${HOST}:${PORT}/ws-location`);
-    const client = new Client({
-      webSocketFactory: () => socket,
-      debug: (str) => console.log("WebSocket Debug:", str),
-      onConnect: () => {
-        console.log("✅ WebSocket Connected");
-        setStompClient(client);
-
-        if (!notif_subscription) {
-          set_notif_subscription(
-            client.subscribe(`/notification/${id}`, (message) => {
-              const newMessage = JSON.parse(message.body);
-              enqueueMessage(newMessage);
-            })
-          );
-        }
-
-        client.subscription = subscription;
-      },
-      onDisconnect: () => console.log("❌ WebSocket Disconnected"),
-      onStompError: (frame) => console.error("❗ STOMP Error:", frame),
-    });
-    client.activate();
-
-    return () => {
-      if (notif_subscription) {
-        notif_subscription.unsubscribe();
-      }
-      client.deactivate();
-    };
-  }, [token, id]);
-
-  const enqueueMessage = (message) => {
-    messageQueue.push(message);
-    if (!currentMessage) {
+  function enqueueMessage(message) {
+    // messageQueue.push(message);
+    setMessgeQueue((prevQueue) => [...prevQueue, message]);
+    // alert(stateRef.current);
+    if (!stateRef.current) {
       setCurrentMessage(message);
       RedrawActionSheet();
     }
-  };
+  }
 
   const RedrawActionSheet = () => {
-    actionSheetRef.current?.hide();
+    // check again in logic
+    // actionSheetRef.current?.hide();
 
     setTimeout(() => {
       // Show ActionSheet with animations
@@ -236,9 +253,11 @@ export default function ServiceH3Map() {
         }),
       ]).start();
     }, 500);
-    // setTimeout(() => {
-    //   hideCurrentMessage();
-    // }, 7000);
+
+    setTimeout(() => {
+      hideCurrentMessage();
+      processRequestQueue();
+    }, 7000);
   };
   const hideCurrentMessage = () => {
     Animated.parallel([
@@ -263,18 +282,33 @@ export default function ServiceH3Map() {
   };
 
   const processRequestQueue = () => {
-    if (messageQueue.length > 1) {
-      setCurrentMessage({ ...messageQueue[1] });
-      setMessgeQueue((q) => {
-        const s = [...q];
-        s.shift();
-        return s;
-      });
-      RedrawActionSheet();
-    } else {
-      hideCurrentMessage();
-    }
+    setMessgeQueue((prevQueue) => {
+      if (prevQueue.length > 1) {
+        const updatedQueue = [...prevQueue];
+        updatedQueue.shift();
+        setCurrentMessage(updatedQueue[0]); // Update the current message
+        RedrawActionSheet();
+        return updatedQueue;
+      } else {
+        setCurrentMessage(null); // Clear the current message
+        return [];
+      }
+    });
   };
+
+  // const processRequestQueue = () => {
+  //   if (messageQueue.length > 1) {
+  //     setCurrentMessage({ ...messageQueue[1] });
+  //     setMessgeQueue((q) => {
+  //       const s = [...q];
+  //       s.shift();
+  //       return s;
+  //     });
+  //     RedrawActionSheet();
+  //   } else {
+  //     hideCurrentMessage();
+  //   }
+  // };
 
   const sendLocationUpdate = React.useCallback(() => {
     if (stompClient && stompClient.connected && location && token) {
