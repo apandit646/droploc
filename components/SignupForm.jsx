@@ -195,11 +195,15 @@ export default function SignupForm() {
                         style={styles.picker}
                         dropdownIconColor="#888"
                       >
-                        <Picker.Item label="User" value="User" color="#fff" />
+                        <Picker.Item
+                          label="User"
+                          value="User"
+                          color={Platform.OS === "ios" ? "#fff" : "black"}
+                        />
                         <Picker.Item
                           label="Driver"
                           value="ServiceProvider"
-                          color="#fff"
+                          color={Platform.OS === "ios" ? "#fff" : "black"}
                         />
                       </Picker>
                     </View>

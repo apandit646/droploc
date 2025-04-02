@@ -532,10 +532,10 @@ export default function H3Map() {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                // onPress={() => {
-                //   toggleSideMenu();
-                //   router.push("/profile");
-                // }}
+                onPress={() => {
+                  toggleDropdown();
+                  router.push("/user");
+                }}
               >
                 <Icon name="person" size={24} color="white" />
                 <Text style={styles.dropdownItemText}>My Profile</Text>

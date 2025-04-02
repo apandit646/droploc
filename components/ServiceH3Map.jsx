@@ -444,10 +444,10 @@ export default function ServiceH3Map() {
             <View style={styles.menuItems}>
               <TouchableOpacity
                 style={styles.menuItem}
-                // onPress={() => {
-                //   toggleSideMenu();
-                //   router.push("/profile");
-                // }}
+                onPress={() => {
+                  toggleSideMenu();
+                  router.push("/driver");
+                }}
               >
                 <Icon name="person" size={24} color="white" />
                 <Text style={styles.menuItemText}>My Profile</Text>
